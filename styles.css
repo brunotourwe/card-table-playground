@@ -1,0 +1,182 @@
+:root {
+  --cloth: #2f6b46;
+  --cloth-dark: #214b34;
+  --table-border: #8b5a2b;
+  --text: #f6f3ed;
+  --card-bg: #fdfbf7;
+  --card-border: #d0c8bb;
+  --card-shadow: rgba(0, 0, 0, 0.2);
+  --card-red: #b3122d;
+  --card-black: #1a1a1a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Georgia", "Times New Roman", serif;
+  background: radial-gradient(circle at top, #3f7a55, var(--cloth-dark));
+  color: var(--text);
+}
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+}
+
+.header h1 {
+  margin: 0 0 8px;
+  font-size: 2.2rem;
+  letter-spacing: 0.02em;
+}
+
+.header p {
+  margin: 0 0 24px;
+  opacity: 0.85;
+}
+
+.controls {
+  margin-bottom: 24px;
+}
+
+.controls label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+.controls-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.controls input[type="number"] {
+  width: 120px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #d6d0c6;
+  font-size: 1rem;
+}
+
+.controls button {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: none;
+  background: #efe4d1;
+  color: #2d2418;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.controls button:hover {
+  background: #f7eddd;
+}
+
+.status {
+  min-height: 1.2em;
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  color: #f6d1b9;
+}
+
+.mode-toggle {
+  margin: 12px 0 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.mode-toggle legend {
+  font-size: 0.85rem;
+  padding: 0;
+  margin-right: 8px;
+}
+
+.mode-toggle label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.table {
+  background: var(--cloth);
+  border: 6px solid var(--table-border);
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.35);
+}
+
+.card-table {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+
+.card {
+  width: 90px;
+  height: 130px;
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  border-radius: 10px;
+  box-shadow: 0 10px 18px var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0;
+  position: relative;
+}
+
+.card--text {
+  padding: 8px;
+  color: var(--card-black);
+}
+
+.card--text[data-suit="hearts"],
+.card--text[data-suit="diamonds"] {
+  color: var(--card-red);
+}
+
+.card__corner {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.card__corner--bottom {
+  transform: rotate(180deg);
+  align-self: flex-end;
+}
+
+.card__center {
+  font-size: 2.2rem;
+  text-align: center;
+  line-height: 1;
+}
+
+.card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+@media (max-width: 640px) {
+  .controls-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .card {
+    width: 76px;
+    height: 110px;
+  }
+}
