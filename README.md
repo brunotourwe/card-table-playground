@@ -2,6 +2,12 @@
 
 Minimal, disposable test project for Dev Hub governance and container reuse.
 
+## Lifecycle Mode
+
+- This project is explicitly classified as `POC`.
+- Primary archetype is `POC-Only Prototype`.
+- Status, constraints, promotion triggers, and temporary exception are defined in `PROJECT_STATUS.md`.
+
 ## Run
 - Open `index.html` in a browser.
 - Enter a number from 1 to 52 and click **Draw**.
