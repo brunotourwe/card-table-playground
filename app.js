@@ -23,10 +23,10 @@ const alphaDegSlider = document.getElementById("alpha-deg");
 const alphaDegSliderValue = document.getElementById("alpha-deg-value");
 const phiDegSlider = document.getElementById("phi-deg");
 const phiDegSliderValue = document.getElementById("phi-deg-value");
-const fanStepSlider = document.getElementById("fan-step-sec");
-const fanStepSliderValue = document.getElementById("fan-step-sec-value");
-const fanRevealSlider = document.getElementById("fan-reveal-ms");
-const fanRevealSliderValue = document.getElementById("fan-reveal-ms-value");
+const fanDurationSlider = document.getElementById("fan-duration-sec");
+const fanDurationSliderValue = document.getElementById("fan-duration-sec-value");
+const fanStepMsSlider = document.getElementById("fan-step-ms");
+const fanStepMsSliderValue = document.getElementById("fan-step-ms-value");
 const fanAnimateToggle = document.getElementById("fan-animate-toggle");
 
 let currentCards = [];
@@ -50,6 +50,7 @@ let handLayoutSyncTimeoutId = null;
 let fanAnimationTimeoutId = null;
 let renderRequestId = 0;
 let isWireframeMode = false;
+let fanCardTimeoutIds = [];
 const svgMarkupCache = new Map();
 const STANDARD_SUIT_CONFIG = [
   { suit: "spades", symbol: "♠︎" },
@@ -88,12 +89,12 @@ const MAX_CARD_HEIGHT_PX = IDEAL_CARD_HEIGHT_PX * 2;
 const DEFAULT_VISIBILITY_FACTOR = 0.5;
 const DEFAULT_ALPHA_DEG = 4;
 const DEFAULT_PHI_DEG = 40;
-const DEFAULT_FAN_STEP_SEC = 0.05;
-const MIN_FAN_STEP_SEC = 0.02;
-const MAX_FAN_STEP_SEC = 0.20;
-const DEFAULT_FAN_REVEAL_MS = 100;
-const MIN_FAN_REVEAL_MS = 50;
-const MAX_FAN_REVEAL_MS = 400;
+const DEFAULT_FAN_DURATION_SEC = 1.0;
+const MIN_FAN_DURATION_SEC = 0.5;
+const MAX_FAN_DURATION_SEC = 2.0;
+const DEFAULT_FAN_STEP_MS = 50;
+const MIN_FAN_STEP_MS = 10;
+const MAX_FAN_STEP_MS = 100;
 const URL_PARAMS = new URLSearchParams(window.location.search);
 const TEST_MODE = URL_PARAMS.get("test") === "1";
 const TEST_SCENARIO = URL_PARAMS.get("scenario") ?? "";
@@ -991,12 +992,17 @@ function refreshHandLayoutFromControls() {
   }
 }
 
-function getFanStepMs() {
-  return getClampedSliderValue(fanStepSlider, DEFAULT_FAN_STEP_SEC, MIN_FAN_STEP_SEC, MAX_FAN_STEP_SEC) * 1000;
+function getFanDurationMs() {
+  return getClampedSliderValue(fanDurationSlider, DEFAULT_FAN_DURATION_SEC, MIN_FAN_DURATION_SEC, MAX_FAN_DURATION_SEC) * 1000;
 }
 
-function getFanRevealMs() {
-  return getClampedSliderValue(fanRevealSlider, DEFAULT_FAN_REVEAL_MS, MIN_FAN_REVEAL_MS, MAX_FAN_REVEAL_MS);
+function getFanStepMs() {
+  return getClampedSliderValue(fanStepMsSlider, DEFAULT_FAN_STEP_MS, MIN_FAN_STEP_MS, MAX_FAN_STEP_MS);
+}
+
+function getEffectiveFanStepMs(cardCount) {
+  const n = Math.max(1, cardCount);
+  return Math.min(getFanDurationMs() / n, getFanStepMs());
 }
 
 function isFanAnimationEnabled() {
@@ -1005,19 +1011,19 @@ function isFanAnimationEnabled() {
 
 function updateFanControlsState() {
   const enabled = isFanAnimationEnabled();
-  if (fanStepSlider) fanStepSlider.disabled = !enabled;
-  if (fanRevealSlider) fanRevealSlider.disabled = !enabled;
+  if (fanDurationSlider) fanDurationSlider.disabled = !enabled;
+  if (fanStepMsSlider) fanStepMsSlider.disabled = !enabled;
 }
 
 function clearFanAnimation() {
+  fanCardTimeoutIds.forEach((id) => window.clearTimeout(id));
+  fanCardTimeoutIds = [];
   if (fanAnimationTimeoutId !== null) {
     window.clearTimeout(fanAnimationTimeoutId);
     fanAnimationTimeoutId = null;
   }
-  cardTable.querySelectorAll(".card--fan-reveal").forEach((card) => {
-    card.classList.remove("card--fan-reveal");
-    card.style.removeProperty("--fan-reveal-ms");
-    card.style.removeProperty("--fan-delay-ms");
+  cardTable.querySelectorAll(".card").forEach((card) => {
+    card.style.removeProperty("opacity");
   });
 }
 
@@ -1040,18 +1046,22 @@ function playFanAnimation(cardCount) {
   if (getViewMode() !== "hand") return;
   if (!isFanAnimationEnabled()) return;
   clearFanAnimation();
-  const fanStepMs = getFanStepMs();
-  const fanRevealMs = getFanRevealMs();
-  const totalMs = Math.max(0, cardCount - 1) * fanStepMs + fanRevealMs;
+  const stepMs = getEffectiveFanStepMs(cardCount);
+  const cards = Array.from(cardTable.querySelectorAll(".card"));
 
-  cardTable.querySelectorAll(".card").forEach((card, i) => {
-    card.style.setProperty("--fan-reveal-ms", `${fanRevealMs}ms`);
-    card.style.setProperty("--fan-delay-ms", `${i * fanStepMs}ms`);
-    card.classList.add("card--fan-reveal");
+  // Hide all cards initially, then reveal each one instantly at its step time.
+  cards.forEach((card) => { card.style.opacity = "0"; });
+  cards.forEach((card, i) => {
+    const id = window.setTimeout(() => {
+      card.style.removeProperty("opacity");
+    }, i * stepMs);
+    fanCardTimeoutIds.push(id);
   });
 
+  const totalMs = Math.max(0, cardCount - 1) * stepMs;
   fanAnimationTimeoutId = window.setTimeout(() => {
-    clearFanAnimation();
+    cards.forEach((card) => card.style.removeProperty("opacity"));
+    fanCardTimeoutIds = [];
     fanAnimationTimeoutId = null;
   }, totalMs + 50);
 }
@@ -1651,12 +1661,17 @@ viewModeInputs.forEach((input) => {
 });
 
 [
-  { slider: fanStepSlider, valueEl: fanStepSliderValue, decimals: 2 },
-  { slider: fanRevealSlider, valueEl: fanRevealSliderValue, decimals: 0 }
+  { slider: fanDurationSlider, valueEl: fanDurationSliderValue, decimals: 1 },
+  { slider: fanStepMsSlider, valueEl: fanStepMsSliderValue, decimals: 0 }
 ].forEach(({ slider, valueEl, decimals }) => {
   if (!slider) return;
   slider.addEventListener("input", () => {
     if (valueEl) valueEl.textContent = parseFloat(slider.value).toFixed(decimals);
+  });
+  slider.addEventListener("pointerup", () => {
+    if (currentCards.length > 0 && getViewMode() === "hand" && isFanAnimationEnabled()) {
+      playFanAnimation(currentCards.length);
+    }
   });
 });
 
