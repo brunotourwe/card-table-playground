@@ -1,0 +1,365 @@
+{
+  "manifestVersion": 1,
+  "normalized": true,
+  "normalizedAt": "2026-02-28T11:38:25.347Z",
+  "sourceManifestPath": "assets/decks/standard54-english/deck.json",
+  "deckId": "standard54-english",
+  "deckVersion": "1.0.0",
+  "title": "Standard 54 English",
+  "description": "English-style 54-card deck with two jokers.",
+  "model": {
+    "kind": "standard52",
+    "jokers": 2
+  },
+  "locale": {
+    "code": "en-US",
+    "rankLabels": {
+      "2": "2",
+      "3": "3",
+      "4": "4",
+      "5": "5",
+      "6": "6",
+      "7": "7",
+      "8": "8",
+      "9": "9",
+      "10": "10",
+      "A": "Ace",
+      "K": "King",
+      "Q": "Queen",
+      "J": "Jack",
+      "JOKER": "Joker"
+    },
+    "suitLabels": {
+      "spades": "Spades",
+      "hearts": "Hearts",
+      "diamonds": "Diamonds",
+      "clubs": "Clubs"
+    }
+  },
+  "cards": [
+    {
+      "cardId": "AS",
+      "rank": "A",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/a_of_spades.svg"
+    },
+    {
+      "cardId": "KS",
+      "rank": "K",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/k_of_spades.svg"
+    },
+    {
+      "cardId": "QS",
+      "rank": "Q",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/q_of_spades.svg"
+    },
+    {
+      "cardId": "JS",
+      "rank": "J",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/j_of_spades.svg"
+    },
+    {
+      "cardId": "10S",
+      "rank": "10",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/10_of_spades.svg"
+    },
+    {
+      "cardId": "9S",
+      "rank": "9",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/9_of_spades.svg"
+    },
+    {
+      "cardId": "8S",
+      "rank": "8",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/8_of_spades.svg"
+    },
+    {
+      "cardId": "7S",
+      "rank": "7",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/7_of_spades.svg"
+    },
+    {
+      "cardId": "6S",
+      "rank": "6",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/6_of_spades.svg"
+    },
+    {
+      "cardId": "5S",
+      "rank": "5",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/5_of_spades.svg"
+    },
+    {
+      "cardId": "4S",
+      "rank": "4",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/4_of_spades.svg"
+    },
+    {
+      "cardId": "3S",
+      "rank": "3",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/3_of_spades.svg"
+    },
+    {
+      "cardId": "2S",
+      "rank": "2",
+      "suit": "spades",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/2_of_spades.svg"
+    },
+    {
+      "cardId": "AH",
+      "rank": "A",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/a_of_hearts.svg"
+    },
+    {
+      "cardId": "KH",
+      "rank": "K",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/k_of_hearts.svg"
+    },
+    {
+      "cardId": "QH",
+      "rank": "Q",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/q_of_hearts.svg"
+    },
+    {
+      "cardId": "JH",
+      "rank": "J",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/j_of_hearts.svg"
+    },
+    {
+      "cardId": "10H",
+      "rank": "10",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/10_of_hearts.svg"
+    },
+    {
+      "cardId": "9H",
+      "rank": "9",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/9_of_hearts.svg"
+    },
+    {
+      "cardId": "8H",
+      "rank": "8",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/8_of_hearts.svg"
+    },
+    {
+      "cardId": "7H",
+      "rank": "7",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/7_of_hearts.svg"
+    },
+    {
+      "cardId": "6H",
+      "rank": "6",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/6_of_hearts.svg"
+    },
+    {
+      "cardId": "5H",
+      "rank": "5",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/5_of_hearts.svg"
+    },
+    {
+      "cardId": "4H",
+      "rank": "4",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/4_of_hearts.svg"
+    },
+    {
+      "cardId": "3H",
+      "rank": "3",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/3_of_hearts.svg"
+    },
+    {
+      "cardId": "2H",
+      "rank": "2",
+      "suit": "hearts",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/2_of_hearts.svg"
+    },
+    {
+      "cardId": "AD",
+      "rank": "A",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/a_of_diamonds.svg"
+    },
+    {
+      "cardId": "KD",
+      "rank": "K",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/k_of_diamonds.svg"
+    },
+    {
+      "cardId": "QD",
+      "rank": "Q",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/q_of_diamonds.svg"
+    },
+    {
+      "cardId": "JD",
+      "rank": "J",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/j_of_diamonds.svg"
+    },
+    {
+      "cardId": "10D",
+      "rank": "10",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/10_of_diamonds.svg"
+    },
+    {
+      "cardId": "9D",
+      "rank": "9",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/9_of_diamonds.svg"
+    },
+    {
+      "cardId": "8D",
+      "rank": "8",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/8_of_diamonds.svg"
+    },
+    {
+      "cardId": "7D",
+      "rank": "7",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/7_of_diamonds.svg"
+    },
+    {
+      "cardId": "6D",
+      "rank": "6",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/6_of_diamonds.svg"
+    },
+    {
+      "cardId": "5D",
+      "rank": "5",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/5_of_diamonds.svg"
+    },
+    {
+      "cardId": "4D",
+      "rank": "4",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/4_of_diamonds.svg"
+    },
+    {
+      "cardId": "3D",
+      "rank": "3",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/3_of_diamonds.svg"
+    },
+    {
+      "cardId": "2D",
+      "rank": "2",
+      "suit": "diamonds",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/2_of_diamonds.svg"
+    },
+    {
+      "cardId": "AC",
+      "rank": "A",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/a_of_clubs.svg"
+    },
+    {
+      "cardId": "KC",
+      "rank": "K",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/k_of_clubs.svg"
+    },
+    {
+      "cardId": "QC",
+      "rank": "Q",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/q_of_clubs.svg"
+    },
+    {
+      "cardId": "JC",
+      "rank": "J",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/j_of_clubs.svg"
+    },
+    {
+      "cardId": "10C",
+      "rank": "10",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/10_of_clubs.svg"
+    },
+    {
+      "cardId": "9C",
+      "rank": "9",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/9_of_clubs.svg"
+    },
+    {
+      "cardId": "8C",
+      "rank": "8",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/8_of_clubs.svg"
+    },
+    {
+      "cardId": "7C",
+      "rank": "7",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/7_of_clubs.svg"
+    },
+    {
+      "cardId": "6C",
+      "rank": "6",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/6_of_clubs.svg"
+    },
+    {
+      "cardId": "5C",
+      "rank": "5",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/5_of_clubs.svg"
+    },
+    {
+      "cardId": "4C",
+      "rank": "4",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/4_of_clubs.svg"
+    },
+    {
+      "cardId": "3C",
+      "rank": "3",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/3_of_clubs.svg"
+    },
+    {
+      "cardId": "2C",
+      "rank": "2",
+      "suit": "clubs",
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/2_of_clubs.svg"
+    },
+    {
+      "cardId": "JOKER-BW",
+      "rank": "JOKER",
+      "suit": null,
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/joker_blackwhite.svg"
+    },
+    {
+      "cardId": "JOKER-COLOR",
+      "rank": "JOKER",
+      "suit": null,
+      "assetPath": "assets/decks/standard54-english/.normalized/cards/joker_color.svg"
+    }
+  ]
+}

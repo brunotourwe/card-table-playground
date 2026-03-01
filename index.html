@@ -7,42 +7,139 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="page">
+    <div class="page-container">
       <header class="header">
         <h1>Card Table Playground</h1>
-        <p>Draw a random set of cards from a standard 52-card deck.</p>
+        <p>Draw a random set of cards from the currently selected deck.</p>
       </header>
 
-      <section class="controls">
-        <label for="card-count">Number of cards (1-52)</label>
-        <div class="controls-row">
-          <input id="card-count" type="number" min="1" max="52" value="5" />
-          <button id="draw-button" type="button">Draw</button>
+      <section class="top-grid">
+        <div class="box col-span-2">
+          <div class="box-title">Deck</div>
+          <select id="deck-select" aria-label="Select deck"></select>
         </div>
-        <fieldset class="mode-toggle">
-          <legend>Card style</legend>
-          <label>
-            <input
-              type="radio"
-              name="render-mode"
-              value="unicode"
-              checked
-            />
-            Unicode symbols
-          </label>
-          <label>
-            <input type="radio" name="render-mode" value="image" />
-            Card face images (SVG)
-          </label>
-        </fieldset>
-        <p id="status" class="status" aria-live="polite"></p>
-      </section>
 
-      <section class="table">
-        <div id="card-table" class="card-table" aria-live="polite"></div>
+        <div class="box col-span-2">
+          <div class="box-title" id="card-count-label">Number of cards</div>
+          <div class="number-grid">
+            <div class="left-content">
+              <input id="card-count" type="number" min="1" max="52" value="7" />
+            </div>
+            <div class="left-content">
+              <button id="draw-button" type="button">Draw</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="box-title">Card style</div>
+          <div class="option-group">
+            <label class="option-row">
+              <input type="radio" name="render-mode" value="unicode" />
+              Unicode symbols
+            </label>
+            <label class="option-row">
+              <input type="radio" name="render-mode" value="image" checked />
+              Card face images (SVG)
+            </label>
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="box-title">Table view</div>
+          <div class="option-group">
+            <label class="option-row">
+              <input type="radio" name="view-mode" value="matrix" />
+              Matrix
+            </label>
+            <label class="option-row">
+              <input type="radio" name="view-mode" value="hand" checked />
+              Hand
+            </label>
+          </div>
+        </div>
+
+        <div class="box col-span-2 debug-box">
+          <div class="box-title">Debug</div>
+          <div class="option-group">
+            <label class="option-row">
+              <input id="show-card-bounds" type="checkbox" />
+              Show card area bounds
+            </label>
+            <label class="option-row">
+              <input id="show-hand-curve" type="checkbox" />
+              Show hand curve
+            </label>
+          </div>
+        </div>
+
+        <div id="card-size-box" class="box slider-box">
+          <div class="box-title">Card height</div>
+          <input
+            id="card-size-px"
+            type="range"
+            min="90"
+            max="372"
+            step="1"
+            value="186"
+          />
+          <div id="card-size-px-value" class="slider-value">186 px</div>
+        </div>
+
+        <div class="box slider-box hand-layout-control">
+          <div class="box-title">Max arch angle</div>
+          <input
+            id="phi-deg"
+            type="range"
+            min="0"
+            max="90"
+            step="0.5"
+            value="40"
+          />
+          <div id="phi-deg-value" class="slider-value">40.0</div>
+        </div>
+
+        <div class="box slider-box hand-layout-control">
+          <div class="box-title">Max card visibility portion</div>
+          <input
+            id="visibility-factor"
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value="0.5"
+          />
+          <div id="visibility-factor-value" class="slider-value">0.50</div>
+        </div>
+
+        <div class="box slider-box hand-layout-control">
+          <div class="box-title">Max card angle</div>
+          <input
+            id="alpha-deg"
+            type="range"
+            min="0"
+            max="15"
+            step="0.1"
+            value="4"
+          />
+          <div id="alpha-deg-value" class="slider-value">4.0</div>
+        </div>
+
+        <p id="status" class="status col-span-4" aria-live="polite"></p>
       </section>
     </div>
 
+    <div class="table-container">
+      <section class="table">
+        <div class="table-viewport">
+          <div class="table-scroll">
+            <div id="card-table" class="card-table" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="assets/decks/decks.runtime.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

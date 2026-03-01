@@ -1,0 +1,87 @@
+# Development Tracker
+
+Last updated: 2026-02-25
+Source: matrix/hand roadmap and current implementation status.
+
+## Tracking Model
+
+Use this file as the primary feature tracker.
+
+Decision records live in `DECISION_LOG.md`.
+Defects/regressions live in `DEBUG_GLITCHES.md`.
+
+Legend:
+- `[x]` Done
+- `[ ]` Planned / Open
+
+Version trace tags on each item:
+- `A` (`AddedOn`): date this tracker item was added
+- `U` (`UpdatedOn`): last tracker metadata update date
+- `T` (`Target`): intended delivery lane (`POC`)
+- `V` (`Version`, optional): release tag when available
+
+## WS-01 Baseline Playground
+
+### 01.1 Core Draw Flow
+- [x] Draw random cards from a standard 52-card deck based on user count input (`1-52`). [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS01-01-1-01]
+- [x] Validate count input and show status message for invalid values. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS01-01-1-02]
+- [x] Redraw current card set when render mode changes (without generating a new draw). [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS01-01-1-03]
+
+### 01.2 Card Rendering Modes
+- [x] Unicode card rendering mode (text ranks/suit symbols). [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS01-01-2-01]
+- [x] SVG card image rendering mode (asset-backed). [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS01-01-2-02]
+
+## WS-02 Matrix and Hand Views
+
+### 02.1 View Mode Foundation
+- [x] Add table view selector with `matrix` and `hand` options. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-1-01]
+- [x] Default view initializes to `matrix` on first load. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-1-02]
+- [x] Persist selected view mode in `sessionStorage`. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-1-03]
+- [x] Animate transitions between matrix and hand views. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-1-04]
+- [ ] Implement fixed row-size matrix renderer with deterministic left-to-right fill. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-1-05]
+
+### 02.2 Hand Layouts (V1)
+- [x] Add hand layout selector with four modes. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-2-01]
+- [x] Implement `fan-arch` layout. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-2-02]
+- [x] Implement `fan-linear` layout. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-2-03]
+- [x] Implement `row-overlap` layout. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-2-04]
+- [x] Implement `row-spaced` layout. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-2-05]
+- [x] Add arch-curve selector with `subtle`, `medium`, and `strong` options. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-2-06]
+- [x] Animate switching between hand layouts. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-2-07]
+- [x] Auto-fallback `fan-arch` to `row-overlap` in tight mobile space with resize re-evaluation. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS02-02-2-08]
+
+## WS-03 Sorting and Grouping (Backlog)
+
+### 03.1 Sorting Engine
+- [ ] Implement sort engine with fixed priority `suit -> rank`. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-1-01]
+- [ ] Implement rank policy switch (`ace_high`, `ace_low`). [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-1-02]
+- [ ] Implement ascending/descending sort direction toggle. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-1-03]
+- [ ] Apply sorting to both matrix and hand views. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-1-04]
+- [ ] Keep sorting authoritative while active (manual reorder disabled). [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-1-05]
+
+### 03.2 Suit-Order Profiles
+- [ ] Implement suit-order profile `fixed1` (Harten, Klaveren, Ruiten, Schoppen). [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-2-01]
+- [ ] Implement suit-order profile `fixed2` (Harten, Ruiten, Klaveren, Schoppen). [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-2-02]
+- [ ] Implement suit-order profile `largest-first`. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-2-03]
+- [ ] Implement suit-order profile `random`. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-2-04]
+- [ ] Implement largest-first alternate-color preference for second suit slot. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-2-05]
+
+### 03.3 Grouping and Trigger Modes
+- [ ] Add sort trigger mode selector (`auto-apply` vs `manual trigger`). [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-3-01]
+- [ ] Add optional suit-group header labels. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-3-02]
+- [ ] Add optional suit-group spacing gaps. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS03-03-3-03]
+
+## WS-04 Interaction and Mobile (Backlog)
+
+### 04.1 Motion Controls
+- [ ] Add animation duration selector and bind duration to transitions. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS04-04-1-01]
+
+### 04.2 Mobile Strategy Controls
+- [ ] Add mobile strategy selector (`swipe-scroll`, `pinch-zoom`, `fixed-fit`). [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS04-04-2-01]
+- [ ] Implement mobile strategy auto-suggestion on resize. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS04-04-2-02]
+
+## WS-05 Persistence (Backlog)
+
+- [ ] Persist sort settings in `sessionStorage` once sorting controls are implemented. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS05-05-1-01]
+- [ ] Persist grouping settings in `sessionStorage` once grouping controls are implemented. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS05-05-1-02]
+- [ ] Persist motion/mobile settings in `sessionStorage` once those controls are implemented. [A:2026-02-25][U:2026-02-25][T:POC][ID:CTP-WS05-05-1-03]

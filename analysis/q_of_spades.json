@@ -1,0 +1,35 @@
+{
+  "sourcePath": "assets/decks/standard54-english/cards/q_of_spades.svg",
+  "viewBox": {
+    "x": 0,
+    "y": 0,
+    "width": 220.99,
+    "height": 308.68
+  },
+  "width": null,
+  "height": null,
+  "candidateOuterBoundary": {
+    "type": "rect",
+    "area": 67694,
+    "rx": 10.52,
+    "ry": 10.52,
+    "tokenIndex": 0,
+    "id": "rect7399-8-3",
+    "bbox": {
+      "x": 0.49,
+      "y": 0.49,
+      "width": 220,
+      "height": 307.7
+    }
+  },
+  "largestShapeArea": 67694,
+  "shapesCount": 11,
+  "hasMultipleRoundedRects": false,
+  "artworkTouchesViewBoxEdge": false,
+  "artworkExceedsSafeCorner": false,
+  "ambiguousOuterBoundary": false,
+  "clipPathCount": 0,
+  "maskCount": 0,
+  "rectCount": 1,
+  "pathCount": 10
+}

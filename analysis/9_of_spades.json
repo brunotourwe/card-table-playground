@@ -1,0 +1,35 @@
+{
+  "sourcePath": "assets/decks/standard54-english/cards/9_of_spades.svg",
+  "viewBox": {
+    "x": 0,
+    "y": 0,
+    "width": 221,
+    "height": 308.7
+  },
+  "width": null,
+  "height": null,
+  "candidateOuterBoundary": {
+    "type": "rect",
+    "area": 67691.8,
+    "rx": 10.52,
+    "ry": 10.52,
+    "tokenIndex": 0,
+    "id": "rect7195-8-7",
+    "bbox": {
+      "x": 0.5,
+      "y": 0.5,
+      "width": 220,
+      "height": 307.69
+    }
+  },
+  "largestShapeArea": 67691.8,
+  "shapesCount": 14,
+  "hasMultipleRoundedRects": false,
+  "artworkTouchesViewBoxEdge": false,
+  "artworkExceedsSafeCorner": false,
+  "ambiguousOuterBoundary": false,
+  "clipPathCount": 0,
+  "maskCount": 0,
+  "rectCount": 1,
+  "pathCount": 13
+}

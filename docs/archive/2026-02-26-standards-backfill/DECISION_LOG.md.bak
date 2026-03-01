@@ -1,0 +1,160 @@
+# Decision Log
+
+Last updated: 2026-02-25
+Status: Active
+
+## Goal
+
+Capture confirmed and pending product decisions separately from feature implementation tracking.
+
+`DEVELOPMENT_TRACKER.md` tracks delivery status.
+`DEBUG_GLITCHES.md` tracks defects/regressions.
+
+## Decision Log
+
+### CTP-DEC-001 Runtime scope
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- Single-user local page model (no multiplayer/shared server state for this project phase).
+
+### CTP-DEC-002 Default table view
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- Default table view is `matrix`.
+
+### CTP-DEC-003 View persistence model
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- Preferences persist in `sessionStorage` (tab/session scoped).
+
+### CTP-DEC-004 V1 hand scope
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- V1 hand scope includes visualization modes only.
+- Manual reordering is out of scope.
+
+### CTP-DEC-005 Hand visualization set
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- Support four hand modes:
+  - `fan-arch`
+  - `fan-linear`
+  - `row-overlap`
+  - `row-spaced`
+- Default hand mode is `fan-arch`.
+
+### CTP-DEC-006 Arch curve controls
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- Provide arch curve strength selector with options:
+  - `subtle`
+  - `medium`
+  - `strong`
+
+### CTP-DEC-007 Mobile fallback behavior
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- On tight mobile space, `fan-arch` auto-falls back to `row-overlap`.
+- Fallback decision is re-evaluated on window resize.
+
+### CTP-DEC-008 Transition behavior
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- Animate matrix/hand view switching.
+- Animate hand-layout mode switching.
+
+### CTP-DEC-009 Sorting scope
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- Sorting applies in both matrix and hand views.
+- Sorting is authoritative while active (manual reorder disabled).
+- Sort trigger modes to support: `auto-apply` and `manual trigger`.
+
+### CTP-DEC-010 Sorting policy
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- Fixed multi-level sort order: `suit -> rank`.
+- Rank policy options: `ace_high` and `ace_low` (default `ace_high`).
+- Sort direction toggle required (`ascending` / `descending`).
+
+### CTP-DEC-011 Suit-order profiles
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- Required suit-order profiles:
+  - `fixed1`: Harten, Klaveren, Ruiten, Schoppen
+  - `fixed2`: Harten, Ruiten, Klaveren, Schoppen
+  - dynamic largest-suit-first profile
+  - `random`
+- Dynamic largest-suit-first profile prefers opposite color in the second slot.
+
+### CTP-DEC-012 Grouping behavior
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- Grouping is optional.
+- Grouping visuals should support both header labels and spacing gaps.
+
+### CTP-DEC-013 Matrix ordering
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- Matrix order fills left-to-right.
+- Matrix row-size target is fixed (not responsive) for this phase.
+
+### CTP-DEC-014 Non-goals for this phase
+
+Status: Confirmed
+Date: 2026-02-25
+
+Decision:
+- Hidden/face-down card handling: out of scope.
+- Keyboard accessibility for sort/reorder controls: deferred.
+- Shareable URL/query state: out of scope.
+
+### CTP-DEC-015 Largest-suit profile label
+
+Status: Open
+Date: 2026-02-25
+
+Decision needed:
+- Confirm short UI label for dynamic largest-suit-first profile.
+
+Proposal:
+- `largest-first`

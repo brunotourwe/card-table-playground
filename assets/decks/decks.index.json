@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-02-28T11:38:25.352Z",
+  "decks": [
+    {
+      "deckId": "standard52-classic",
+      "title": "Standard 52 Classic",
+      "deckVersion": "1.0.0",
+      "model": {
+        "kind": "standard52",
+        "jokers": 0
+      },
+      "manifestPath": "assets/decks/standard52-french/.normalized/deck.normalized.json",
+      "status": "valid"
+    },
+    {
+      "deckId": "standard54-english",
+      "title": "Standard 54 English",
+      "deckVersion": "1.0.0",
+      "model": {
+        "kind": "standard52",
+        "jokers": 2
+      },
+      "manifestPath": "assets/decks/standard54-english/.normalized/deck.normalized.json",
+      "status": "valid"
+    }
+  ]
+}

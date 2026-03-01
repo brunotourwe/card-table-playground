@@ -1,0 +1,35 @@
+{
+  "sourcePath": "assets/decks/standard54-english/cards/joker_blackwhite.svg",
+  "viewBox": {
+    "x": 0,
+    "y": 0,
+    "width": 220.99,
+    "height": 308.68
+  },
+  "width": null,
+  "height": null,
+  "candidateOuterBoundary": {
+    "type": "path",
+    "area": 67697.077,
+    "rx": 0,
+    "ry": 0,
+    "tokenIndex": 0,
+    "id": "path4170",
+    "bbox": {
+      "x": 0.49,
+      "y": 0.49,
+      "width": 220.01,
+      "height": 307.70000000000005
+    }
+  },
+  "largestShapeArea": 67697.077,
+  "shapesCount": 2,
+  "hasMultipleRoundedRects": false,
+  "artworkTouchesViewBoxEdge": false,
+  "artworkExceedsSafeCorner": false,
+  "ambiguousOuterBoundary": false,
+  "clipPathCount": 0,
+  "maskCount": 0,
+  "rectCount": 0,
+  "pathCount": 2
+}

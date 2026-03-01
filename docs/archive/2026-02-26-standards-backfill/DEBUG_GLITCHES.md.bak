@@ -1,0 +1,19 @@
+# Debug / Glitch Tracker
+
+Last updated: 2026-02-25
+
+Purpose:
+- Track defects and regressions that are not feature roadmap items.
+- Keep `DEVELOPMENT_TRACKER.md` focused on feature scope.
+
+Legend:
+- `[ ]` Open
+- `[x]` Fixed
+
+## Open Issues
+
+- No open glitches logged yet.
+
+## Fixed Issues
+
+- No glitch fixes logged yet.
