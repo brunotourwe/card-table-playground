@@ -22,7 +22,8 @@ For deck updates (adding cards, SVGs, metadata), use the deck pipeline commands 
 
 ### Card Drawing
 
-- Draw a random hand of N cards (1–52) from a standard 52-card deck.
+- Select a deck from the deck selector; the available card count updates to match the deck size.
+- Draw a random hand of N cards from the selected deck (1 up to the deck's full size).
 - Input is validated; invalid values show a status message.
 - Auto-draw triggers on card-count spinner changes (150 ms debounce).
 - Press **Enter** from anywhere on the page to draw (suppressed when an input or select has focus).
@@ -35,7 +36,7 @@ For deck updates (adding cards, SVGs, metadata), use the deck pipeline commands 
 
 ### Card Size
 
-- Card height configurable via slider (90–300 px).
+- Card height configurable via slider (90–372 px).
 - Card width derives from height using a fixed aspect ratio.
 
 ### Table Views
@@ -52,8 +53,8 @@ The hand renderer uses three continuous parameters instead of discrete layout pr
 | Parameter | Range | Effect |
 |---|---|---|
 | `visibilityFactor` (VF) | 0–1 | Fraction of card width visible for each card; 0 = fully stacked, 1 = fully spread |
-| `alphaDeg` | 0–10° | Desired per-card angular step (rotation between consecutive cards) |
-| `phiDeg` | 0–60° | Maximum total fan angle; caps `alphaDeg × (N−1)` |
+| `alphaDeg` | 0–15° | Desired per-card angular step (rotation between consecutive cards) |
+| `phiDeg` | 0–90° | Maximum total fan angle; caps `alphaDeg × (N−1)` |
 
 **Geometry model:**
 

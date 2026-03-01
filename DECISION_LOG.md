@@ -189,8 +189,8 @@ Decision:
 - Remove overlap, curvature, arch presets, auto-angle toggle, and hand-layout mode switches from the hand UI.
 - Expose exactly three hand parameters:
   - `visibilityFactor` (`0..1`)
-  - `alphaDeg` (`0..10`)
-  - `phiDeg` (`0..60`)
+  - `alphaDeg` (`0..15`)
+  - `phiDeg` (`0..90`)
 
 ### CTP-DEC-017 Hand geometry model
 

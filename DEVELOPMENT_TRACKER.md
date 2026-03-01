@@ -58,9 +58,9 @@ Meta fields on each item:
   Meta: ID:CTP-WS02-02-2-01 | A:2026-02-25 | U:2026-03-01 | T:POC
 - [x] Add `visibilityFactor` control (`0..1`) to determine visible card width contribution.
   Meta: ID:CTP-WS02-02-2-02 | A:2026-03-01 | U:2026-03-01 | T:POC
-- [x] Add `alphaDeg` control (`0..10`) as desired per-card angular step.
+- [x] Add `alphaDeg` control (`0..15`) as desired per-card angular step.
   Meta: ID:CTP-WS02-02-2-03 | A:2026-03-01 | U:2026-03-01 | T:POC
-- [x] Add `phiDeg` control (`0..60`) as maximum allowed total fan angle.
+- [x] Add `phiDeg` control (`0..90`) as maximum allowed total fan angle.
   Meta: ID:CTP-WS02-02-2-04 | A:2026-03-01 | U:2026-03-01 | T:POC
 - [x] Use arc-length-consistent anchor placement on a circle, with automatic straight-line fallback when `alphaEff == 0`.
   Meta: ID:CTP-WS02-02-2-05 | A:2026-03-01 | U:2026-03-01 | T:POC
