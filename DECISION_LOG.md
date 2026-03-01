@@ -270,3 +270,41 @@ Date: 2026-03-01
 Decision:
 - Card height slider minimum is 90 px (raised from 50 px).
 - Cards below 90 px are too small for the SVG artwork to remain legible.
+
+### CTP-DEC-024 Fan animation model
+
+Status: Confirmed
+Date: 2026-03-01
+
+Decision:
+- Hand cards are revealed left-to-right via staggered opacity animation (no positional movement during the fan).
+- Cards are placed at their final positions before the fan starts; the fan is a pure reveal effect.
+- Fan triggers: Draw button, Enter key, card-count spinner, deck switch, matrix→hand view switch, hand-layout slider release (from wireframe mode).
+- Hand→matrix switch retains the existing `card-view-switch` keyframe (simultaneous fade-in with translate+scale).
+- Right-to-left fan direction: deferred to backlog (CTP-WS02-02-4-06).
+
+### CTP-DEC-025 Wireframe slider-drag mode
+
+Status: Confirmed
+Date: 2026-03-01
+
+Decision:
+- While a hand-layout slider (VF, alphaDeg, phiDeg) is pointer-held, the hand switches to wireframe mode.
+- Wireframe: card content (`card-face`) hidden; card border visible as a rotated rectangle outline; CSS transitions disabled (`transition: none`).
+- Layout updates are instant during wireframe mode (no CSS transition lag, no cascading jumps).
+- `pointerdown` interrupts any running fan animation and enters wireframe immediately.
+- `pointerup` exits wireframe and triggers a fan animation at the current (wireframe) positions.
+- Keyboard-driven slider interaction (arrow keys) does not enter wireframe; CSS transitions remain active.
+
+### CTP-DEC-026 Fan animation timing parameters
+
+Status: Confirmed
+Date: 2026-03-01
+
+Decision:
+- Two configurable parameters exposed as hand-layout controls:
+  - `fan step (s/card)`: time between consecutive card appearances. Range 0.02–0.20 s, default 0.05 s.
+  - `fan reveal (ms/card)`: duration of each individual card's fade-in animation. Range 50–400 ms, default 100 ms.
+- Both parameters are always immediately effective regardless of hand size.
+- Total animation duration = `(N − 1) × fanStep + fanReveal`.
+- Original `fan max total` design discarded: it had no visible effect for typical hand sizes (≤10 cards) because the natural total was already well below the 1.0 s default cap.

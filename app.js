@@ -23,6 +23,11 @@ const alphaDegSlider = document.getElementById("alpha-deg");
 const alphaDegSliderValue = document.getElementById("alpha-deg-value");
 const phiDegSlider = document.getElementById("phi-deg");
 const phiDegSliderValue = document.getElementById("phi-deg-value");
+const fanStepSlider = document.getElementById("fan-step-sec");
+const fanStepSliderValue = document.getElementById("fan-step-sec-value");
+const fanRevealSlider = document.getElementById("fan-reveal-ms");
+const fanRevealSliderValue = document.getElementById("fan-reveal-ms-value");
+const fanAnimateToggle = document.getElementById("fan-animate-toggle");
 
 let currentCards = [];
 let currentViewMode = "hand";
@@ -42,7 +47,9 @@ const HAND_BASE_CANVAS_HEIGHT = 230;
 let viewSwitchTimeoutId = null;
 let resizeRenderTimeoutId = null;
 let handLayoutSyncTimeoutId = null;
+let fanAnimationTimeoutId = null;
 let renderRequestId = 0;
+let isWireframeMode = false;
 const svgMarkupCache = new Map();
 const STANDARD_SUIT_CONFIG = [
   { suit: "spades", symbol: "♠︎" },
@@ -81,6 +88,12 @@ const MAX_CARD_HEIGHT_PX = IDEAL_CARD_HEIGHT_PX * 2;
 const DEFAULT_VISIBILITY_FACTOR = 0.5;
 const DEFAULT_ALPHA_DEG = 4;
 const DEFAULT_PHI_DEG = 40;
+const DEFAULT_FAN_STEP_SEC = 0.05;
+const MIN_FAN_STEP_SEC = 0.02;
+const MAX_FAN_STEP_SEC = 0.20;
+const DEFAULT_FAN_REVEAL_MS = 100;
+const MIN_FAN_REVEAL_MS = 50;
+const MAX_FAN_REVEAL_MS = 400;
 const URL_PARAMS = new URLSearchParams(window.location.search);
 const TEST_MODE = URL_PARAMS.get("test") === "1";
 const TEST_SCENARIO = URL_PARAMS.get("scenario") ?? "";
@@ -677,6 +690,8 @@ function updateHandModeControls() {
   if (phiDegSlider) {
     phiDegSlider.disabled = !isHandView;
   }
+
+  updateFanControlsState();
 }
 
 function applyTableLayout(viewMode) {
@@ -967,7 +982,78 @@ function refreshHandLayoutFromControls() {
   stabilizeHandLayout(currentCards.length);
   syncHandScrollPosition();
   updateDebugOverlays();
-  schedulePostTransitionHandLayoutSync();
+
+  // Skip post-transition sync during wireframe mode — no CSS transitions are running.
+  // For keyboard-driven slider interaction (no pointerdown), transitions are still active
+  // so the deferred sync remains useful.
+  if (!isWireframeMode) {
+    schedulePostTransitionHandLayoutSync();
+  }
+}
+
+function getFanStepMs() {
+  return getClampedSliderValue(fanStepSlider, DEFAULT_FAN_STEP_SEC, MIN_FAN_STEP_SEC, MAX_FAN_STEP_SEC) * 1000;
+}
+
+function getFanRevealMs() {
+  return getClampedSliderValue(fanRevealSlider, DEFAULT_FAN_REVEAL_MS, MIN_FAN_REVEAL_MS, MAX_FAN_REVEAL_MS);
+}
+
+function isFanAnimationEnabled() {
+  return !fanAnimateToggle || fanAnimateToggle.checked;
+}
+
+function updateFanControlsState() {
+  const enabled = isFanAnimationEnabled();
+  if (fanStepSlider) fanStepSlider.disabled = !enabled;
+  if (fanRevealSlider) fanRevealSlider.disabled = !enabled;
+}
+
+function clearFanAnimation() {
+  if (fanAnimationTimeoutId !== null) {
+    window.clearTimeout(fanAnimationTimeoutId);
+    fanAnimationTimeoutId = null;
+  }
+  cardTable.querySelectorAll(".card--fan-reveal").forEach((card) => {
+    card.classList.remove("card--fan-reveal");
+    card.style.removeProperty("--fan-reveal-ms");
+    card.style.removeProperty("--fan-delay-ms");
+  });
+}
+
+function enterWireframeMode() {
+  clearFanAnimation();
+  if (handLayoutSyncTimeoutId !== null) {
+    window.clearTimeout(handLayoutSyncTimeoutId);
+    handLayoutSyncTimeoutId = null;
+  }
+  isWireframeMode = true;
+  cardTable.classList.add("card-table--hand-wireframe");
+}
+
+function exitWireframeMode() {
+  isWireframeMode = false;
+  cardTable.classList.remove("card-table--hand-wireframe");
+}
+
+function playFanAnimation(cardCount) {
+  if (getViewMode() !== "hand") return;
+  if (!isFanAnimationEnabled()) return;
+  clearFanAnimation();
+  const fanStepMs = getFanStepMs();
+  const fanRevealMs = getFanRevealMs();
+  const totalMs = Math.max(0, cardCount - 1) * fanStepMs + fanRevealMs;
+
+  cardTable.querySelectorAll(".card").forEach((card, i) => {
+    card.style.setProperty("--fan-reveal-ms", `${fanRevealMs}ms`);
+    card.style.setProperty("--fan-delay-ms", `${i * fanStepMs}ms`);
+    card.classList.add("card--fan-reveal");
+  });
+
+  fanAnimationTimeoutId = window.setTimeout(() => {
+    clearFanAnimation();
+    fanAnimationTimeoutId = null;
+  }, totalMs + 50);
 }
 
 function animateViewSwitch() {
@@ -1391,7 +1477,12 @@ function schedulePostTransitionHandLayoutSync() {
 }
 
 async function renderCards(cards, options = {}) {
-  const { animate = false } = options;
+  const { animate = false, fanAnimation = false } = options;
+
+  // Any re-render interrupts wireframe and running fan animation.
+  clearFanAnimation();
+  exitWireframeMode();
+
   const renderId = renderRequestId + 1;
   renderRequestId = renderId;
   cardTable.innerHTML = "";
@@ -1417,15 +1508,20 @@ async function renderCards(cards, options = {}) {
   if (viewMode === "hand") {
     stabilizeHandLayout(cards.length);
     syncHandScrollPosition();
-    schedulePostTransitionHandLayoutSync();
+    if (fanAnimation || animate) {
+      // Fan on: explicit draw/deck-switch (fanAnimation) or matrix→hand switch (animate).
+      playFanAnimation(cards.length);
+    } else {
+      // Render-mode toggle, card-size change, window resize — keep deferred sync.
+      schedulePostTransitionHandLayoutSync();
+    }
   } else {
     syncHandViewportHeight();
+    if (animate) {
+      animateViewSwitch(); // hand→matrix: existing fade-in keyframe
+    }
   }
   updateDebugOverlays();
-
-  if (animate) {
-    animateViewSwitch();
-  }
 }
 
 function getRequestedCount() {
@@ -1459,7 +1555,7 @@ function drawFromInput() {
 
   clearStatus();
   currentCards = drawCards(count);
-  return renderCards(currentCards);
+  return renderCards(currentCards, { fanAnimation: true });
 }
 
 drawButton.addEventListener("click", drawFromInput);
@@ -1539,7 +1635,40 @@ viewModeInputs.forEach((input) => {
     updateHandGeometryValueLabels();
     refreshHandLayoutFromControls();
   });
+
+  slider.addEventListener("pointerdown", () => {
+    if (isFanAnimationEnabled() && getViewMode() === "hand" && currentCards.length > 0) {
+      enterWireframeMode();
+    }
+  });
+
+  slider.addEventListener("pointerup", () => {
+    if (isWireframeMode) {
+      exitWireframeMode();
+      playFanAnimation(currentCards.length);
+    }
+  });
 });
+
+[
+  { slider: fanStepSlider, valueEl: fanStepSliderValue, decimals: 2 },
+  { slider: fanRevealSlider, valueEl: fanRevealSliderValue, decimals: 0 }
+].forEach(({ slider, valueEl, decimals }) => {
+  if (!slider) return;
+  slider.addEventListener("input", () => {
+    if (valueEl) valueEl.textContent = parseFloat(slider.value).toFixed(decimals);
+  });
+});
+
+if (fanAnimateToggle) {
+  fanAnimateToggle.addEventListener("change", () => {
+    updateFanControlsState();
+    if (!isFanAnimationEnabled()) {
+      clearFanAnimation();
+      exitWireframeMode();
+    }
+  });
+}
 
 if (cardSizeSlider) {
   cardSizeSlider.addEventListener("input", () => {

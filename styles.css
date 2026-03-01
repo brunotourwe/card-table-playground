@@ -263,6 +263,25 @@ body {
   animation: card-view-switch var(--view-switch-duration) ease;
 }
 
+/* Wireframe mode: shown while a hand-layout slider is being dragged */
+.card-table--hand-wireframe .card {
+  transition: none;
+  background: transparent;
+  box-shadow: none;
+  border: 2px solid rgba(246, 243, 237, 0.45);
+}
+
+.card-table--hand-wireframe .card-face {
+  visibility: hidden;
+}
+
+/* Fan reveal animation: staggered left-to-right card appearance */
+.card--fan-reveal {
+  animation: fan-card-reveal var(--fan-reveal-ms, 80ms) ease forwards;
+  animation-delay: var(--fan-delay-ms, 0ms);
+  animation-fill-mode: backwards;
+}
+
 .card-bounds-overlay {
   position: absolute;
   border: 2px dotted rgba(246, 209, 185, 0.95);
@@ -330,6 +349,11 @@ body {
   100% {
     opacity: 1;
   }
+}
+
+@keyframes fan-card-reveal {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 .card--text {

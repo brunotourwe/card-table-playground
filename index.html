@@ -125,6 +125,42 @@
           <div id="alpha-deg-value" class="slider-value">4.0</div>
         </div>
 
+        <div class="box slider-box hand-layout-control">
+          <div class="box-title">Fan step (s/card)</div>
+          <input
+            id="fan-step-sec"
+            type="range"
+            min="0.02"
+            max="0.20"
+            step="0.01"
+            value="0.05"
+          />
+          <div id="fan-step-sec-value" class="slider-value">0.05</div>
+        </div>
+
+        <div class="box slider-box hand-layout-control">
+          <div class="box-title">Fan reveal (ms/card)</div>
+          <input
+            id="fan-reveal-ms"
+            type="range"
+            min="50"
+            max="400"
+            step="10"
+            value="100"
+          />
+          <div id="fan-reveal-ms-value" class="slider-value">100</div>
+        </div>
+
+        <div class="box hand-layout-control">
+          <div class="box-title">Animation</div>
+          <div class="option-group">
+            <label class="option-row">
+              <input id="fan-animate-toggle" type="checkbox" checked />
+              Fan animation
+            </label>
+          </div>
+        </div>
+
         <p id="status" class="status col-span-4" aria-live="polite"></p>
       </section>
     </div>

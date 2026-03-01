@@ -92,6 +92,21 @@ Meta fields on each item:
 - [x] Card height slider minimum raised to 90 px.
   Meta: ID:CTP-WS02-02-3-09 | A:2026-03-01 | U:2026-03-01 | T:POC
 
+### 02.4 Hand Animation
+
+- [x] Fan animation: hand cards revealed left-to-right with staggered opacity on draw, deck switch, and matrix→hand view switch.
+  Meta: ID:CTP-WS02-02-4-01 | A:2026-03-01 | U:2026-03-01 | T:POC
+- [x] Wireframe slider-drag mode: holding a hand-layout slider shows card outlines only (no content, no CSS transitions) for instant jank-free geometry feedback.
+  Meta: ID:CTP-WS02-02-4-02 | A:2026-03-01 | U:2026-03-01 | T:POC
+- [x] Fan animation on slider release: exiting wireframe mode triggers fan animation at the correct final positions.
+  Meta: ID:CTP-WS02-02-4-03 | A:2026-03-01 | U:2026-03-01 | T:POC
+- [x] Fan animation timing controls: `fan step (s/card)` slider (0.02–0.10 s, default 0.05 s) and `fan max total (s)` slider (0.2–3.0 s, default 1.0 s); effective step = min(perCard, maxTotal/(N-1)).
+  Meta: ID:CTP-WS02-02-4-04 | A:2026-03-01 | U:2026-03-01 | T:POC
+- [x] Pointer-down on hand-layout slider interrupts any running fan animation and immediately enters wireframe mode.
+  Meta: ID:CTP-WS02-02-4-05 | A:2026-03-01 | U:2026-03-01 | T:POC
+- [ ] Right-to-left fan animation direction option.
+  Meta: ID:CTP-WS02-02-4-06 | A:2026-03-01 | U:2026-03-01 | T:POC
+
 ## WS-03 Sorting and Grouping (Backlog)
 
 ### 03.1 Sorting Engine
