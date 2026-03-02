@@ -86,7 +86,35 @@
           <div id="card-size-px-value" class="slider-value">186 px</div>
         </div>
 
-        <div class="box slider-box hand-layout-control">
+        <div id="hand-layout-mode-box" class="box hand-layout-control">
+          <div class="box-title">Hand layout</div>
+          <div class="option-group">
+            <label class="option-row">
+              <input type="radio" name="hand-layout-mode" value="classic" checked />
+              Classic
+            </label>
+            <label class="option-row">
+              <input type="radio" name="hand-layout-mode" value="demo" />
+              Demo
+            </label>
+          </div>
+        </div>
+
+        <div id="hand-sort-box" class="box hand-layout-control">
+          <div class="box-title">Hand sorting</div>
+          <div class="option-group">
+            <label class="option-row">
+              <input id="hand-sort-enabled" type="checkbox" checked />
+              Enable sorting
+            </label>
+          </div>
+          <select id="hand-rank-policy" aria-label="Hand rank policy">
+            <option value="high_low" selected>Rank: high to low</option>
+            <option value="low_high">Rank: low to high</option>
+          </select>
+        </div>
+
+        <div id="phi-deg-box" class="box slider-box hand-layout-control">
           <div class="box-title">Max arch angle</div>
           <input
             id="phi-deg"
@@ -112,8 +140,8 @@
           <div id="visibility-factor-value" class="slider-value">0.50</div>
         </div>
 
-        <div class="box slider-box hand-layout-control">
-          <div class="box-title">Max card angle</div>
+        <div id="alpha-deg-box" class="box slider-box hand-layout-control">
+          <div id="alpha-deg-title" class="box-title">Max card angle</div>
           <input
             id="alpha-deg"
             type="range"
@@ -123,6 +151,19 @@
             value="4"
           />
           <div id="alpha-deg-value" class="slider-value">4.0</div>
+        </div>
+
+        <div id="demo-outer-drop-box" class="box slider-box hand-layout-control mode-toggle__subcontrol--hidden">
+          <div class="box-title">Outer drop</div>
+          <input
+            id="demo-outer-drop-pct"
+            type="range"
+            min="0"
+            max="5"
+            step="0.1"
+            value="2.0"
+          />
+          <div id="demo-outer-drop-pct-value" class="slider-value">2.0%</div>
         </div>
 
         <div class="box slider-box hand-layout-control">
@@ -152,6 +193,16 @@
         </div>
 
         <div class="box hand-layout-control">
+          <div class="box-title">Depth</div>
+          <div class="option-group">
+            <label class="option-row">
+              <input id="hand-depth-shadow-toggle" type="checkbox" checked />
+              Depth shadows
+            </label>
+          </div>
+        </div>
+
+        <div class="box hand-layout-control">
           <div class="box-title">Animation</div>
           <div class="option-group">
             <label class="option-row">
@@ -176,6 +227,7 @@
     </div>
 
     <script src="assets/decks/decks.runtime.js"></script>
+    <script src="hand-sorting.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

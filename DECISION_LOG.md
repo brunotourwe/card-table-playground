@@ -1,6 +1,6 @@
 # Decision Log
 
-Last updated: 2026-03-01 (session 2)
+Last updated: 2026-03-02 (session 3)
 Status: Active
 
 ## Goal
@@ -109,7 +109,7 @@ Superseded scope:
 
 ### CTP-DEC-009 Sorting scope
 
-Status: Confirmed
+Status: Superseded
 Date: 2026-02-25
 
 Decision:
@@ -117,9 +117,12 @@ Decision:
 - Sorting is authoritative while active (manual reorder disabled).
 - Sort trigger modes to support: `auto-apply` and `manual trigger`.
 
+Superseded by:
+- `CTP-DEC-027`
+
 ### CTP-DEC-010 Sorting policy
 
-Status: Confirmed
+Status: Superseded
 Date: 2026-02-25
 
 Decision:
@@ -127,9 +130,12 @@ Decision:
 - Rank policy options: `ace_high` and `ace_low` (default `ace_high`).
 - Sort direction toggle required (`ascending` / `descending`).
 
+Superseded by:
+- `CTP-DEC-027`
+
 ### CTP-DEC-011 Suit-order profiles
 
-Status: Confirmed
+Status: Superseded
 Date: 2026-02-25
 
 Decision:
@@ -139,6 +145,9 @@ Decision:
   - dynamic largest-suit-first profile
   - `random`
 - Dynamic largest-suit-first profile prefers opposite color in the second slot.
+
+Superseded by:
+- `CTP-DEC-027`
 
 ### CTP-DEC-012 Grouping behavior
 
@@ -252,6 +261,23 @@ Decision:
 - Clamping uses the exact linear model `contentWidth = A × vf + B`, where `B = buildLayouts(0)` bounding box width (not `cardWidth`, which underestimates in arc mode due to rotated card extents).
 - Effective VF restores toward the user-set value as the hand shrinks.
 - The clamp reference is the table's resolved CSS `max-width` via `getComputedStyle` so the frame can expand to its full width before clamping applies.
+
+### CTP-DEC-027 Hand sorting model revision
+
+Status: Confirmed
+Date: 2026-03-02
+
+Decision:
+- Semantic sorting applies only to `hand` view.
+- `matrix` view remains unsorted.
+- Hand sorting is independent from render direction:
+  - `rtl` mirrors presentation only and does not reverse semantic order.
+- v1 hand sorting uses suit groups plus per-suit rank sorting.
+- Jokers always form a separate final group.
+- v1 suit-group policy is a global alternating-color optimization with deterministic tie-breaks, not a greedy local rule.
+- Suit-group strength is evaluated by full per-suit rank profile under the active rank policy; count is secondary to rank profile.
+- Detailed algorithm is defined in:
+  - `docs/specs/hand-sorting-v1.md`
 
 ### CTP-DEC-022 Body minimum page width
 

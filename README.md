@@ -48,7 +48,14 @@ For deck updates (adding cards, SVGs, metadata), use the deck pipeline commands 
 
 ### Hand Layout Geometry
 
-The hand renderer uses three continuous parameters instead of discrete layout presets:
+Hand view supports two layout modes:
+
+- **Classic** — circular fan using `visibilityFactor`, `alphaDeg`, and `phiDeg`.
+- **Demo** — shallow center fan with flattened shoulders using `visibilityFactor`, `gap angle`, and `outer drop`.
+
+#### Classic
+
+The Classic hand renderer uses three continuous parameters:
 
 | Parameter | Range | Effect |
 |---|---|---|
@@ -71,6 +78,36 @@ The hand renderer uses three continuous parameters instead of discrete layout pr
 - `B` is derived from `buildLayouts(0)` so it accounts for the rotated-card extents in arc mode (not just `cardWidth`).
 - The clamp reference is the table's resolved CSS `max-width` (`getComputedStyle`), so the frame can always expand to full width before clamping kicks in.
 
+#### Demo
+
+The Demo hand layout uses:
+
+| Parameter | Range | Effect |
+|---|---|---|
+| `visibilityFactor` (VF) | 0–1 | Fraction of card width visible for each card |
+| `gap angle` | 0.3–2.0° | Center card-to-card angle difference |
+| `outer drop` | 0–5% | Maximum extra downward step at the outer shoulders |
+
+Demo behavior:
+
+- The middle of the hand keeps a very shallow fan.
+- Outer shoulders reduce the per-card angle difference toward 25% of the center gap angle instead of reaching zero.
+- Shoulder descent comes from both residual card tilt and the configurable extra outer drop.
+- `phiDeg` does not apply in Demo mode.
+
+### Hand Sorting
+
+- Sorting applies only in **hand** view.
+- `matrix` view remains unsorted.
+- Hand sorting is semantic; future right-to-left hand rendering should mirror placement only, not reverse the sorted sequence.
+- Current controls:
+  - `Enable sorting`
+  - `Rank policy`: `high_low` or `low_high`
+- Suit-group ordering is optimized globally for alternating color, then resolved by full per-suit rank profile, then suit count, then fallback suit priority.
+- Jokers always remain in a separate final group.
+
+Detailed rules are defined in `docs/specs/hand-sorting-v1.md`.
+
 ### Table Frame Sizing
 
 - Frame uses `width: fit-content` so it wraps card content exactly.
@@ -83,6 +120,7 @@ The hand renderer uses three continuous parameters instead of discrete layout pr
 
 - **Card bounds** — draws a visible outline around each card's bounding box.
 - **Hand curve** — draws the active anchor-point arc or straight line through all card anchors.
+- **Depth shadows** — optional stacking-aware under-card shadows in hand view to improve overlap readability.
 
 Both overlays update live as hand parameters change.
 
@@ -102,6 +140,7 @@ Source decks live under `assets/decks/<deckFolder>/deck.json`.
 npm run decks:validate   # validate manifest schema, coverage, and SVG safety rules
 npm run decks:normalize  # validate → write normalized assets, regenerate index and runtime bundle
 npm run decks:index      # regenerate deck index from normalized manifests only
+npm run hand:sort:test   # verify pure hand-sorting fixtures
 ```
 
 ### Artifacts

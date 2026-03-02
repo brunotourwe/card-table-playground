@@ -11,8 +11,11 @@ const renderModeInputs = document.querySelectorAll(
   "input[name=\"render-mode\"]"
 );
 const viewModeInputs = document.querySelectorAll("input[name=\"view-mode\"]");
+const handLayoutModeInputs = document.querySelectorAll("input[name=\"hand-layout-mode\"]");
 const handLayoutControls = document.querySelectorAll(".hand-layout-control");
 const cardSizeBox = document.getElementById("card-size-box");
+const handSortEnabledToggle = document.getElementById("hand-sort-enabled");
+const handRankPolicySelect = document.getElementById("hand-rank-policy");
 const showCardBoundsToggle = document.getElementById("show-card-bounds");
 const showHandCurveToggle = document.getElementById("show-hand-curve");
 const cardSizeSlider = document.getElementById("card-size-px");
@@ -21,8 +24,14 @@ const visibilityFactorSlider = document.getElementById("visibility-factor");
 const visibilityFactorSliderValue = document.getElementById("visibility-factor-value");
 const alphaDegSlider = document.getElementById("alpha-deg");
 const alphaDegSliderValue = document.getElementById("alpha-deg-value");
+const alphaDegTitle = document.getElementById("alpha-deg-title");
 const phiDegSlider = document.getElementById("phi-deg");
 const phiDegSliderValue = document.getElementById("phi-deg-value");
+const phiDegBox = document.getElementById("phi-deg-box");
+const demoOuterDropBox = document.getElementById("demo-outer-drop-box");
+const demoOuterDropSlider = document.getElementById("demo-outer-drop-pct");
+const demoOuterDropSliderValue = document.getElementById("demo-outer-drop-pct-value");
+const handDepthShadowToggle = document.getElementById("hand-depth-shadow-toggle");
 const fanDurationSlider = document.getElementById("fan-duration-sec");
 const fanDurationSliderValue = document.getElementById("fan-duration-sec-value");
 const fanStepMsSlider = document.getElementById("fan-step-ms");
@@ -34,8 +43,11 @@ let currentViewMode = "hand";
 let availableDecks = [];
 let activeDeck = null;
 const VIEW_STORAGE_KEY = "ctp:view-mode";
+const HAND_LAYOUT_MODE_STORAGE_KEY = "ctp:hand-layout-mode";
+const HAND_DEPTH_SHADOW_STORAGE_KEY = "ctp:hand-depth-shadow";
 const DECK_INDEX_PATH = "assets/decks/decks.index.json";
 const DEFAULT_DECK_ID = "standard54-english";
+const HAND_SORTING_API = globalThis.__CTP_HAND_SORTING__ ?? null;
 const PRELOADED_DECK_INDEX = globalThis.__CTP_DECK_INDEX__;
 const PRELOADED_DECK_MANIFESTS = globalThis.__CTP_DECK_MANIFESTS__;
 const PRELOADED_SVG_MARKUP = globalThis.__CTP_DECK_SVG__;
@@ -86,9 +98,17 @@ const BASE_CARD_HEIGHT_PX = 130;
 const IDEAL_CARD_HEIGHT_PX = Math.round(BASE_CARD_HEIGHT_PX / 0.7);
 const MIN_CARD_HEIGHT_PX = 90;
 const MAX_CARD_HEIGHT_PX = IDEAL_CARD_HEIGHT_PX * 2;
+const DEFAULT_HAND_LAYOUT_MODE = "classic";
+const DEFAULT_HAND_SORT_ENABLED = true;
+const DEFAULT_HAND_RANK_POLICY = "high_low";
 const DEFAULT_VISIBILITY_FACTOR = 0.5;
 const DEFAULT_ALPHA_DEG = 4;
 const DEFAULT_PHI_DEG = 40;
+const DEMO_MIN_ALPHA_DEG = 0.3;
+const DEMO_MAX_ALPHA_DEG = 2.0;
+const DEFAULT_DEMO_ALPHA_DEG = 0.8;
+const DEFAULT_DEMO_OUTER_DROP_PCT = 2.0;
+const DEFAULT_HAND_DEPTH_SHADOW_ENABLED = true;
 const DEFAULT_FAN_DURATION_SEC = 1.0;
 const MIN_FAN_DURATION_SEC = 0.5;
 const MAX_FAN_DURATION_SEC = 2.0;
@@ -99,6 +119,8 @@ const URL_PARAMS = new URLSearchParams(window.location.search);
 const TEST_MODE = URL_PARAMS.get("test") === "1";
 const TEST_SCENARIO = URL_PARAMS.get("scenario") ?? "";
 const testScenarioHistory = [];
+let classicAlphaDegValue = DEFAULT_ALPHA_DEG;
+let demoAlphaDegValue = DEFAULT_DEMO_ALPHA_DEG;
 
 function getDeckMaxCount() {
   return activeDeck && Array.isArray(activeDeck.cards) && activeDeck.cards.length > 0
@@ -265,6 +287,16 @@ async function applyUrlDrivenTestConfig() {
     currentViewMode = requestedViewMode;
   }
 
+  const requestedHandLayoutMode = URL_PARAMS.get("hand_mode");
+  if (requestedHandLayoutMode && isSupportedHandLayoutMode(requestedHandLayoutMode)) {
+    handLayoutModeInputs.forEach((input) => {
+      input.checked = input.value === requestedHandLayoutMode;
+    });
+    setStoredHandLayoutMode(requestedHandLayoutMode);
+  }
+
+  syncAlphaSliderForMode(true);
+
   const requestedCount = parseUrlIntegerParam("count");
   if (requestedCount !== null) {
     const maxCount = getDeckMaxCount();
@@ -285,14 +317,21 @@ async function applyUrlDrivenTestConfig() {
     visibilityFactorSlider.value = requestedVisibility.toFixed(2);
   }
 
-  const requestedAlphaDeg = parseUrlClampedFloatParam("alpha_deg", 0, 15);
+  const alphaConfig = getAlphaSliderConfig();
+  const requestedAlphaDeg = parseUrlClampedFloatParam("alpha_deg", alphaConfig.min, alphaConfig.max);
   if (requestedAlphaDeg !== null && alphaDegSlider) {
     alphaDegSlider.value = requestedAlphaDeg.toFixed(1);
+    storeCurrentAlphaValueForMode();
   }
 
   const requestedPhiDeg = parseUrlClampedFloatParam("phi_deg", 0, 90);
   if (requestedPhiDeg !== null && phiDegSlider) {
     phiDegSlider.value = requestedPhiDeg.toFixed(1);
+  }
+
+  const requestedDemoOuterDropPct = parseUrlClampedFloatParam("demo_outer_drop", 0, 5);
+  if (requestedDemoOuterDropPct !== null && demoOuterDropSlider) {
+    demoOuterDropSlider.value = requestedDemoOuterDropPct.toFixed(1);
   }
 
   updateHandGeometryValueLabels();
@@ -516,6 +555,10 @@ function isSupportedViewMode(value) {
   return value === "matrix" || value === "hand";
 }
 
+function isSupportedHandLayoutMode(value) {
+  return value === "classic" || value === "demo";
+}
+
 function getStoredViewMode() {
   try {
     const storedMode = sessionStorage.getItem(VIEW_STORAGE_KEY);
@@ -547,11 +590,116 @@ function initializeViewMode() {
   currentViewMode = initialViewMode;
 }
 
+function getStoredHandLayoutMode() {
+  try {
+    const storedMode = sessionStorage.getItem(HAND_LAYOUT_MODE_STORAGE_KEY);
+    return isSupportedHandLayoutMode(storedMode) ? storedMode : DEFAULT_HAND_LAYOUT_MODE;
+  } catch (_error) {
+    return DEFAULT_HAND_LAYOUT_MODE;
+  }
+}
+
+function setStoredHandLayoutMode(mode) {
+  if (!isSupportedHandLayoutMode(mode)) {
+    return;
+  }
+
+  try {
+    sessionStorage.setItem(HAND_LAYOUT_MODE_STORAGE_KEY, mode);
+  } catch (_error) {
+    // Ignore storage failures in local/file-browser contexts.
+  }
+}
+
+function initializeHandLayoutMode() {
+  const initialMode = getStoredHandLayoutMode();
+
+  handLayoutModeInputs.forEach((input) => {
+    input.checked = input.value === initialMode;
+  });
+}
+
+function getStoredHandDepthShadowEnabled() {
+  try {
+    const storedValue = sessionStorage.getItem(HAND_DEPTH_SHADOW_STORAGE_KEY);
+    if (storedValue === null) {
+      return DEFAULT_HAND_DEPTH_SHADOW_ENABLED;
+    }
+    return storedValue === "1";
+  } catch (_error) {
+    return DEFAULT_HAND_DEPTH_SHADOW_ENABLED;
+  }
+}
+
+function setStoredHandDepthShadowEnabled(enabled) {
+  try {
+    sessionStorage.setItem(HAND_DEPTH_SHADOW_STORAGE_KEY, enabled ? "1" : "0");
+  } catch (_error) {
+    // Ignore storage failures in local/file-browser contexts.
+  }
+}
+
+function initializeHandDepthShadowToggle() {
+  if (!handDepthShadowToggle) {
+    return;
+  }
+
+  handDepthShadowToggle.checked = getStoredHandDepthShadowEnabled();
+}
+
 function getViewMode() {
   const selected = document.querySelector("input[name=\"view-mode\"]:checked");
   return selected && isSupportedViewMode(selected.value)
     ? selected.value
     : DEFAULT_VIEW_MODE;
+}
+
+function getHandLayoutMode() {
+  const selected = document.querySelector("input[name=\"hand-layout-mode\"]:checked");
+  return selected && isSupportedHandLayoutMode(selected.value)
+    ? selected.value
+    : DEFAULT_HAND_LAYOUT_MODE;
+}
+
+function isSupportedHandRankPolicy(value) {
+  return value === "high_low" || value === "low_high";
+}
+
+function isHandSortEnabled() {
+  return HAND_SORTING_API !== null &&
+    (
+      handSortEnabledToggle
+        ? handSortEnabledToggle.checked
+        : DEFAULT_HAND_SORT_ENABLED
+    );
+}
+
+function getHandRankPolicy() {
+  if (!handRankPolicySelect || !isSupportedHandRankPolicy(handRankPolicySelect.value)) {
+    return DEFAULT_HAND_RANK_POLICY;
+  }
+
+  return handRankPolicySelect.value;
+}
+
+function getCardsForView(cards, viewMode) {
+  if (viewMode !== "hand" || !isHandSortEnabled()) {
+    return cards;
+  }
+
+  try {
+    return HAND_SORTING_API.sortHandCards(cards, {
+      rankPolicy: getHandRankPolicy()
+    }).sortedCards;
+  } catch (_error) {
+    return cards;
+  }
+}
+
+function isHandDepthShadowEnabled() {
+  return handDepthShadowToggle
+    ? handDepthShadowToggle.checked
+    : DEFAULT_HAND_DEPTH_SHADOW_ENABLED;
 }
 
 function getClampedSliderValue(input, fallbackValue, minValue, maxValue) {
@@ -587,12 +735,82 @@ function getCardSizePx() {
   );
 }
 
+function getAlphaSliderConfig(mode = getHandLayoutMode()) {
+  if (mode === "demo") {
+    return {
+      min: DEMO_MIN_ALPHA_DEG,
+      max: DEMO_MAX_ALPHA_DEG,
+      step: 0.1,
+      fallback: DEFAULT_DEMO_ALPHA_DEG,
+      title: "Gap angle"
+    };
+  }
+
+  return {
+    min: 0,
+    max: 15,
+    step: 0.1,
+    fallback: DEFAULT_ALPHA_DEG,
+    title: "Max card angle"
+  };
+}
+
+function storeCurrentAlphaValueForMode(mode = getHandLayoutMode()) {
+  if (!alphaDegSlider) {
+    return;
+  }
+
+  const config = getAlphaSliderConfig(mode);
+  const value = getClampedSliderValue(alphaDegSlider, config.fallback, config.min, config.max);
+
+  if (mode === "demo") {
+    demoAlphaDegValue = value;
+    return;
+  }
+
+  classicAlphaDegValue = value;
+}
+
+function syncAlphaSliderForMode(force = false) {
+  if (!alphaDegSlider) {
+    return;
+  }
+
+  const mode = getHandLayoutMode();
+  const priorMode = alphaDegSlider.dataset.layoutMode;
+
+  if (priorMode && priorMode !== mode) {
+    storeCurrentAlphaValueForMode(priorMode);
+  }
+
+  const config = getAlphaSliderConfig(mode);
+  const targetValue = mode === "demo" ? demoAlphaDegValue : classicAlphaDegValue;
+
+  if (force || priorMode !== mode) {
+    alphaDegSlider.min = `${config.min}`;
+    alphaDegSlider.max = `${config.max}`;
+    alphaDegSlider.step = `${config.step}`;
+    alphaDegSlider.value = targetValue.toFixed(1);
+    alphaDegSlider.dataset.layoutMode = mode;
+  }
+
+  if (alphaDegTitle) {
+    alphaDegTitle.textContent = config.title;
+  }
+}
+
 function getAlphaDeg() {
-  return getClampedSliderValue(alphaDegSlider, DEFAULT_ALPHA_DEG, 0, 15);
+  const mode = getHandLayoutMode();
+  const config = getAlphaSliderConfig(mode);
+  return getClampedSliderValue(alphaDegSlider, config.fallback, config.min, config.max);
 }
 
 function getPhiDeg() {
   return getClampedSliderValue(phiDegSlider, DEFAULT_PHI_DEG, 0, 90);
+}
+
+function getDemoOuterDropPct() {
+  return getClampedSliderValue(demoOuterDropSlider, DEFAULT_DEMO_OUTER_DROP_PCT, 0, 5);
 }
 
 function setSliderValueLabel(labelNode, value, digits) {
@@ -610,6 +828,9 @@ function updateHandGeometryValueLabels() {
   setSliderValueLabel(visibilityFactorSliderValue, getVisibilityFactor(), 2);
   setSliderValueLabel(alphaDegSliderValue, getAlphaDeg(), 1);
   setSliderValueLabel(phiDegSliderValue, getPhiDeg(), 1);
+  if (demoOuterDropSliderValue) {
+    demoOuterDropSliderValue.textContent = `${getDemoOuterDropPct().toFixed(1)}%`;
+  }
 }
 
 function parseUrlFloatParam(name) {
@@ -671,10 +892,27 @@ function applyCardSizeCssVariables() {
 function updateHandModeControls() {
   const viewMode = getViewMode();
   const isHandView = viewMode === "hand";
+  const handLayoutMode = getHandLayoutMode();
+
+  syncAlphaSliderForMode();
 
   handLayoutControls.forEach((control) => {
     control.classList.toggle("mode-toggle--hidden", !isHandView);
   });
+
+  if (phiDegBox) {
+    phiDegBox.classList.toggle(
+      "mode-toggle__subcontrol--hidden",
+      !isHandView || handLayoutMode !== "classic"
+    );
+  }
+
+  if (demoOuterDropBox) {
+    demoOuterDropBox.classList.toggle(
+      "mode-toggle__subcontrol--hidden",
+      !isHandView || handLayoutMode !== "demo"
+    );
+  }
 
   if (cardSizeBox) {
     cardSizeBox.classList.toggle("col-span-4", !isHandView);
@@ -689,10 +927,34 @@ function updateHandModeControls() {
   }
 
   if (phiDegSlider) {
-    phiDegSlider.disabled = !isHandView;
+    phiDegSlider.disabled = !isHandView || handLayoutMode !== "classic";
   }
 
+  if (demoOuterDropSlider) {
+    demoOuterDropSlider.disabled = !isHandView || handLayoutMode !== "demo";
+  }
+
+  if (handSortEnabledToggle) {
+    handSortEnabledToggle.disabled = !isHandView || HAND_SORTING_API === null;
+  }
+
+  if (handRankPolicySelect) {
+    handRankPolicySelect.disabled = !isHandView || HAND_SORTING_API === null || !isHandSortEnabled();
+  }
+
+  if (handDepthShadowToggle) {
+    handDepthShadowToggle.disabled = !isHandView;
+  }
+
+  updateHandGeometryValueLabels();
   updateFanControlsState();
+}
+
+function applyHandDepthShadowState(viewMode = getViewMode()) {
+  cardTable.classList.toggle(
+    "card-table--hand-depth",
+    viewMode === "hand" && isHandDepthShadowEnabled()
+  );
 }
 
 function applyTableLayout(viewMode) {
@@ -702,10 +964,12 @@ function applyTableLayout(viewMode) {
 
   if (viewMode !== "hand") {
     cardTable.classList.add("card-table--matrix");
+    applyHandDepthShadowState(viewMode);
     return;
   }
 
   cardTable.classList.add("card-table--hand");
+  applyHandDepthShadowState(viewMode);
 }
 
 function degToRad(value) {
@@ -777,6 +1041,205 @@ function getBoundsFromPoints(points) {
   };
 }
 
+function smoothstep(edge0, edge1, value) {
+  if (edge0 === edge1) {
+    return value < edge0 ? 0 : 1;
+  }
+
+  const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+function getNormalizedGapDistance(gapIndex, centerIndex, stepCount) {
+  if (stepCount <= 1) {
+    return 1;
+  }
+
+  const gapCenter = gapIndex + 0.5;
+  const maxGapDistance = Math.abs(0.5 - centerIndex);
+
+  if (maxGapDistance <= 0) {
+    return 1;
+  }
+
+  return Math.abs(gapCenter - centerIndex) / maxGapDistance;
+}
+
+function buildClassicHandLayouts({
+  total,
+  cardWidth,
+  cardHeight,
+  visibilityFactor,
+  alphaRad,
+  phiRad
+}) {
+  const stepCount = Math.max(0, total - 1);
+  let alphaEffRad = 0;
+
+  if (stepCount > 0) {
+    alphaEffRad = Math.min(alphaRad, phiRad / stepCount);
+  }
+
+  const centerIndex = (total - 1) / 2;
+  const thetaStart = -centerIndex * alphaEffRad;
+  const visibleWidth = visibilityFactor * cardWidth;
+  const radius = alphaEffRad > 0 ? visibleWidth / alphaEffRad : Number.POSITIVE_INFINITY;
+  const layouts = [];
+
+  for (let index = 0; index < total; index += 1) {
+    const thetaRad = thetaStart + index * alphaEffRad;
+    const anchorX = alphaEffRad > 0
+      ? radius * Math.sin(thetaRad)
+      : (index - centerIndex) * visibleWidth;
+    const anchorY = alphaEffRad > 0
+      ? radius - radius * Math.cos(thetaRad)
+      : 0;
+
+    layouts.push({
+      index,
+      thetaRad,
+      thetaDeg: radToDeg(thetaRad),
+      anchorX,
+      anchorY,
+      contour: getCardContourPoints(anchorX, anchorY, thetaRad, cardWidth, cardHeight)
+    });
+  }
+
+  return {
+    layouts,
+    visibleWidth,
+    alphaEffRad,
+    alphaEffDeg: radToDeg(alphaEffRad),
+    thetaStart,
+    thetaEnd: thetaStart + stepCount * alphaEffRad,
+    radius,
+    curveType: "arc"
+  };
+}
+
+function buildDemoHandLayouts({
+  total,
+  cardWidth,
+  cardHeight,
+  visibilityFactor,
+  alphaDeg,
+  demoOuterDropPct
+}) {
+  const stepCount = Math.max(0, total - 1);
+  const centerIndex = (total - 1) / 2;
+  const visibleWidth = visibilityFactor * cardWidth;
+  const centerGapAngleRad = degToRad(alphaDeg);
+  const maxOuterDropPx = (demoOuterDropPct / 100) * cardHeight;
+  const gapAngles = [];
+  const gapDrops = [];
+
+  for (let gapIndex = 0; gapIndex < stepCount; gapIndex += 1) {
+    const normalizedDistance = getNormalizedGapDistance(gapIndex, centerIndex, stepCount);
+    const angleFalloff = smoothstep(0.5, 1, normalizedDistance);
+    const angleWeight = 1 - 0.75 * angleFalloff;
+    const dropWeight = smoothstep(1 / 3, 1, normalizedDistance);
+    gapAngles.push(centerGapAngleRad * angleWeight);
+    gapDrops.push(maxOuterDropPx * dropWeight);
+  }
+
+  const thetaRaw = [0];
+
+  for (let index = 1; index < total; index += 1) {
+    thetaRaw.push(thetaRaw[index - 1] + (gapAngles[index - 1] ?? 0));
+  }
+
+  const thetaOffset = thetaRaw.length > 0 ? (thetaRaw[0] + thetaRaw[thetaRaw.length - 1]) / 2 : 0;
+  const thetaValues = thetaRaw.map((value) => value - thetaOffset);
+  const anchorPoints = Array.from({ length: total }, () => ({ x: 0, y: 0 }));
+
+  if (total % 2 === 1) {
+    const centerCardIndex = Math.floor(centerIndex);
+    anchorPoints[centerCardIndex] = { x: 0, y: 0 };
+
+    for (let index = centerCardIndex; index < total - 1; index += 1) {
+      const avgThetaRad = (thetaValues[index] + thetaValues[index + 1]) / 2;
+      const dx = visibleWidth;
+      const dy = Math.tan(avgThetaRad) * dx + (gapDrops[index] ?? 0);
+      anchorPoints[index + 1] = {
+        x: anchorPoints[index].x + dx,
+        y: anchorPoints[index].y + dy
+      };
+    }
+
+    for (let index = centerCardIndex - 1; index >= 0; index -= 1) {
+      const avgThetaRad = (thetaValues[index] + thetaValues[index + 1]) / 2;
+      const dx = -visibleWidth;
+      const dy = Math.tan(avgThetaRad) * dx + (gapDrops[index] ?? 0);
+      anchorPoints[index] = {
+        x: anchorPoints[index + 1].x + dx,
+        y: anchorPoints[index + 1].y + dy
+      };
+    }
+  } else {
+    const rightCenterIndex = total / 2;
+    const leftCenterIndex = rightCenterIndex - 1;
+    anchorPoints[leftCenterIndex] = { x: -visibleWidth / 2, y: 0 };
+    anchorPoints[rightCenterIndex] = { x: visibleWidth / 2, y: 0 };
+
+    for (let index = rightCenterIndex; index < total - 1; index += 1) {
+      const avgThetaRad = (thetaValues[index] + thetaValues[index + 1]) / 2;
+      const dx = visibleWidth;
+      const dy = Math.tan(avgThetaRad) * dx + (gapDrops[index] ?? 0);
+      anchorPoints[index + 1] = {
+        x: anchorPoints[index].x + dx,
+        y: anchorPoints[index].y + dy
+      };
+    }
+
+    for (let index = leftCenterIndex - 1; index >= 0; index -= 1) {
+      const avgThetaRad = (thetaValues[index] + thetaValues[index + 1]) / 2;
+      const dx = -visibleWidth;
+      const dy = Math.tan(avgThetaRad) * dx + (gapDrops[index] ?? 0);
+      anchorPoints[index] = {
+        x: anchorPoints[index + 1].x + dx,
+        y: anchorPoints[index + 1].y + dy
+      };
+    }
+  }
+
+  const minAnchorY = anchorPoints.reduce(
+    (minValue, point) => Math.min(minValue, point.y),
+    Number.POSITIVE_INFINITY
+  );
+  const layouts = [];
+
+  for (let index = 0; index < total; index += 1) {
+    const thetaRad = thetaValues[index];
+    const anchorX = anchorPoints[index].x;
+    const anchorY = anchorPoints[index].y - minAnchorY;
+
+    layouts.push({
+      index,
+      thetaRad,
+      thetaDeg: radToDeg(thetaRad),
+      anchorX,
+      anchorY,
+      contour: getCardContourPoints(anchorX, anchorY, thetaRad, cardWidth, cardHeight)
+    });
+  }
+
+  return {
+    layouts,
+    visibleWidth,
+    alphaEffRad: null,
+    alphaEffDeg: null,
+    thetaStart: layouts[0]?.thetaRad ?? 0,
+    thetaEnd: layouts[layouts.length - 1]?.thetaRad ?? 0,
+    radius: null,
+    curveType: "polyline",
+    curvePoints: layouts.map((layout) => ({ x: layout.anchorX, y: layout.anchorY })),
+    centerGapAngleDeg: alphaDeg,
+    maxOuterDropPx,
+    gapAnglesDeg: gapAngles.map((value) => radToDeg(value)),
+    gapDropsPx: gapDrops
+  };
+}
+
 function getHandLayoutMetrics(total) {
   const firstCard = cardTable.querySelector(".card");
 
@@ -797,50 +1260,40 @@ function getHandLayoutMetrics(total) {
     cardTable.parentElement?.clientWidth ||
     window.innerWidth;
   const availableWidth = Math.max(0, baseFrameWidth - paddingLeft - paddingRight);
+  const handLayoutMode = getHandLayoutMode();
   const alphaDeg = getAlphaDeg();
   const phiDeg = getPhiDeg();
+  const demoOuterDropPct = getDemoOuterDropPct();
   const alphaRad = degToRad(alphaDeg);
   const phiRad = degToRad(phiDeg);
   const stepCount = Math.max(0, total - 1);
-  let alphaEffRad = 0;
-
-  if (stepCount > 0) {
-    alphaEffRad = Math.min(alphaRad, phiRad / stepCount);
-  }
-
   const centerIndex = (total - 1) / 2;
-  const thetaStart = -centerIndex * alphaEffRad;
 
   const buildLayouts = (vf) => {
-    const vw = vf * cardWidth;
-    const r = alphaEffRad > 0 ? vw / alphaEffRad : Number.POSITIVE_INFINITY;
-    const layouts = [];
-
-    for (let index = 0; index < total; index += 1) {
-      const thetaRad = thetaStart + index * alphaEffRad;
-      const anchorX = alphaEffRad > 0
-        ? r * Math.sin(thetaRad)
-        : (index - centerIndex) * vw;
-      const anchorY = alphaEffRad > 0
-        ? r - r * Math.cos(thetaRad)
-        : 0;
-
-      layouts.push({
-        index,
-        thetaRad,
-        thetaDeg: radToDeg(thetaRad),
-        anchorX,
-        anchorY,
-        contour: getCardContourPoints(anchorX, anchorY, thetaRad, cardWidth, cardHeight)
+    if (handLayoutMode === "demo") {
+      return buildDemoHandLayouts({
+        total,
+        cardWidth,
+        cardHeight,
+        visibilityFactor: vf,
+        alphaDeg,
+        demoOuterDropPct
       });
     }
 
-    return layouts;
+    return buildClassicHandLayouts({
+      total,
+      cardWidth,
+      cardHeight,
+      visibilityFactor: vf,
+      alphaRad,
+      phiRad
+    });
   };
 
   let visibilityFactor = getVisibilityFactor();
-  let cardLayouts = buildLayouts(visibilityFactor);
-  let rawBounds = getBoundsFromPoints(cardLayouts.flatMap((layout) => layout.contour));
+  let layoutState = buildLayouts(visibilityFactor);
+  let rawBounds = getBoundsFromPoints(layoutState.layouts.flatMap((layout) => layout.contour));
 
   // Auto-clamp: reduce effective visibility when hand would exceed the maximum possible
   // scroll area. We derive maxContentWidth from the table's CSS max-width (resolved to
@@ -868,33 +1321,38 @@ function getHandLayoutMetrics(total) {
     // In arc mode B > cardWidth because the rotated card contributes cardHeight*sin(angle) to
     // the horizontal extent. This gives the exact B for the linear model: contentWidth = A*VF + B.
     const boundsAtZeroVf = getBoundsFromPoints(
-      buildLayouts(0).flatMap((l) => l.contour)
+      buildLayouts(0).layouts.flatMap((layout) => layout.contour)
     );
     const B = boundsAtZeroVf.width;
     if (rawBounds.width > B && maxContentWidth > B) {
       visibilityFactor = visibilityFactor * (maxContentWidth - B) / (rawBounds.width - B);
-      cardLayouts = buildLayouts(visibilityFactor);
-      rawBounds = getBoundsFromPoints(cardLayouts.flatMap((layout) => layout.contour));
+      layoutState = buildLayouts(visibilityFactor);
+      rawBounds = getBoundsFromPoints(layoutState.layouts.flatMap((layout) => layout.contour));
     }
   }
 
-  const visibleWidth = visibilityFactor * cardWidth;
-  const radius = alphaEffRad > 0 ? visibleWidth / alphaEffRad : Number.POSITIVE_INFINITY;
+  const visibleWidth = layoutState.visibleWidth;
   const contentWidth = rawBounds.width;
   const contentHeight = rawBounds.height;
   const tableWidth = Math.ceil(contentWidth + paddingLeft + paddingRight);
   const offsetX = paddingLeft - rawBounds.left;
   const offsetY = paddingTop - rawBounds.top;
-  const positionedCards = cardLayouts.map((layout) => ({
+  const positionedCards = layoutState.layouts.map((layout) => ({
     ...layout,
     screenAnchorX: offsetX + layout.anchorX,
     screenAnchorY: offsetY + layout.anchorY,
     left: offsetX + layout.anchorX - cardWidth / 2,
     top: offsetY + layout.anchorY - cardHeight
   }));
-  const thetaEnd = thetaStart + stepCount * alphaEffRad;
+  const curvePoints = Array.isArray(layoutState.curvePoints)
+    ? layoutState.curvePoints.map((point) => ({
+        x: offsetX + point.x,
+        y: offsetY + point.y
+      }))
+    : null;
 
   return {
+    handLayoutMode,
     cardWidth,
     cardHeight,
     faceAnchorBottom,
@@ -906,22 +1364,29 @@ function getHandLayoutMetrics(total) {
     visibilityFactor,
     alphaDeg,
     phiDeg,
+    demoOuterDropPct,
     alphaRad,
     phiRad,
-    alphaEffRad,
-    alphaEffDeg: radToDeg(alphaEffRad),
+    alphaEffRad: layoutState.alphaEffRad,
+    alphaEffDeg: layoutState.alphaEffDeg,
     visibleWidth,
     stepCount,
     centerIndex,
-    thetaStart,
-    thetaEnd,
-    radius,
+    thetaStart: layoutState.thetaStart,
+    thetaEnd: layoutState.thetaEnd,
+    radius: layoutState.radius,
     rawBounds,
     contentWidth,
     contentHeight,
     tableWidth,
     offsetX,
     offsetY,
+    curveType: layoutState.curveType,
+    curvePoints,
+    centerGapAngleDeg: layoutState.centerGapAngleDeg ?? alphaDeg,
+    maxOuterDropPx: layoutState.maxOuterDropPx ?? 0,
+    gapAnglesDeg: layoutState.gapAnglesDeg ?? null,
+    gapDropsPx: layoutState.gapDropsPx ?? null,
     cardLayouts: positionedCards
   };
 }
@@ -966,12 +1431,21 @@ function layoutHandCards(total) {
 
   cardElements.forEach((cardElement, index) => {
     const cardLayout = metrics.cardLayouts[index];
+    const shadowDepth = metrics.cardLayouts.length <= 1
+      ? 1
+      : index / (metrics.cardLayouts.length - 1);
+    const shadowOpacity = 0.09 + shadowDepth * 0.11;
+    const shadowBlur = 8 + shadowDepth * 10;
+    const shadowShiftY = shadowDepth * 3;
 
     cardElement.style.left = `${Math.round(cardLayout.left)}px`;
     cardElement.style.top = `${Math.round(cardLayout.top)}px`;
     cardElement.style.transformOrigin = "50% 100%";
     cardElement.style.transform = `rotate(${cardLayout.thetaDeg}deg)`;
     cardElement.style.zIndex = `${index + 1}`;
+    cardElement.style.setProperty("--hand-shadow-opacity", shadowOpacity.toFixed(3));
+    cardElement.style.setProperty("--hand-shadow-blur", `${shadowBlur.toFixed(1)}px`);
+    cardElement.style.setProperty("--hand-shadow-shift-y", `${shadowShiftY.toFixed(1)}px`);
   });
 }
 
@@ -1127,10 +1601,14 @@ function getHandLayoutDiagnostics() {
     deckId: activeDeck?.deckId ?? null,
     cardCount: currentCards.length,
     viewMode: getViewMode(),
+    handLayoutMode: getHandLayoutMode(),
+    handSortEnabled: isHandSortEnabled(),
+    handRankPolicy: getHandRankPolicy(),
     cardSizePx: getCardSizePx(),
     visibilityFactor: getVisibilityFactor(),
     alphaDeg: getAlphaDeg(),
-    phiDeg: getPhiDeg(),
+    phiDeg: getHandLayoutMode() === "classic" ? getPhiDeg() : null,
+    demoOuterDropPct: getHandLayoutMode() === "demo" ? getDemoOuterDropPct() : null,
     tableViewportHeight: tableViewport?.clientHeight ?? null,
     tableScrollHeight: tableScroll?.clientHeight ?? null,
     cardTableClientHeight: cardTable.clientHeight,
@@ -1144,6 +1622,9 @@ function getHandLayoutDiagnostics() {
           thetaStart: metrics.thetaStart,
           thetaEnd: metrics.thetaEnd,
           radius: metrics.radius,
+          curveType: metrics.curveType,
+          centerGapAngleDeg: metrics.centerGapAngleDeg,
+          maxOuterDropPx: metrics.maxOuterDropPx,
           contentWidth: metrics.contentWidth,
           contentHeight: metrics.contentHeight
         }
@@ -1377,6 +1858,36 @@ function getHandCurvePoints() {
     return [];
   }
 
+  if (metrics.curveType === "polyline") {
+    const anchorPoints = metrics.cardLayouts.map((layout) => ({
+      x: layout.screenAnchorX,
+      y: layout.screenAnchorY
+    }));
+
+    if (anchorPoints.length <= 1) {
+      return anchorPoints;
+    }
+
+    const points = [];
+
+    for (let index = 0; index < anchorPoints.length - 1; index += 1) {
+      const start = anchorPoints[index];
+      const end = anchorPoints[index + 1];
+      const segmentSamples = 6;
+
+      for (let step = 0; step < segmentSamples; step += 1) {
+        const t = step / segmentSamples;
+        points.push({
+          x: start.x + (end.x - start.x) * t,
+          y: start.y + (end.y - start.y) * t
+        });
+      }
+    }
+
+    points.push(anchorPoints[anchorPoints.length - 1]);
+    return points;
+  }
+
   const sampleCount = Math.max(24, currentCards.length * 8);
   const points = [];
 
@@ -1498,10 +2009,11 @@ async function renderCards(cards, options = {}) {
   cardTable.innerHTML = "";
   const mode = getRenderMode();
   const viewMode = getViewMode();
+  const cardsToRender = getCardsForView(cards, viewMode);
   applyTableLayout(viewMode);
   updateHandModeControls();
   const renderedCards = await Promise.all(
-    cards.map(async (card, index) => {
+    cardsToRender.map(async (card, index) => {
       const cardElement = await createCardElement(card, mode);
       return { cardElement, index };
     })
@@ -1516,11 +2028,11 @@ async function renderCards(cards, options = {}) {
   });
 
   if (viewMode === "hand") {
-    stabilizeHandLayout(cards.length);
+    stabilizeHandLayout(cardsToRender.length);
     syncHandScrollPosition();
     if (fanAnimation || animate) {
       // Fan on: explicit draw/deck-switch (fanAnimation) or matrix→hand switch (animate).
-      playFanAnimation(cards.length);
+      playFanAnimation(cardsToRender.length);
     } else {
       // Render-mode toggle, card-size change, window resize — keep deferred sync.
       schedulePostTransitionHandLayoutSync();
@@ -1632,16 +2144,53 @@ viewModeInputs.forEach((input) => {
   });
 });
 
+handLayoutModeInputs.forEach((input) => {
+  input.addEventListener("change", () => {
+    const selectedMode = getHandLayoutMode();
+    syncAlphaSliderForMode();
+    setStoredHandLayoutMode(selectedMode);
+    updateHandModeControls();
+
+    if (currentCards.length > 0 && getViewMode() === "hand") {
+      renderCards(currentCards);
+    }
+  });
+});
+
+if (handSortEnabledToggle) {
+  handSortEnabledToggle.addEventListener("change", () => {
+    updateHandModeControls();
+
+    if (currentCards.length > 0 && getViewMode() === "hand") {
+      renderCards(currentCards);
+    }
+  });
+}
+
+if (handRankPolicySelect) {
+  handRankPolicySelect.addEventListener("change", () => {
+    updateHandModeControls();
+
+    if (currentCards.length > 0 && getViewMode() === "hand" && isHandSortEnabled()) {
+      renderCards(currentCards);
+    }
+  });
+}
+
 [
   visibilityFactorSlider,
   alphaDegSlider,
-  phiDegSlider
+  phiDegSlider,
+  demoOuterDropSlider
 ].forEach((slider) => {
   if (!slider) {
     return;
   }
 
   slider.addEventListener("input", () => {
+    if (slider === alphaDegSlider) {
+      storeCurrentAlphaValueForMode();
+    }
     updateHandGeometryValueLabels();
     refreshHandLayoutFromControls();
   });
@@ -1708,6 +2257,13 @@ if (showHandCurveToggle) {
   });
 }
 
+if (handDepthShadowToggle) {
+  handDepthShadowToggle.addEventListener("change", () => {
+    setStoredHandDepthShadowEnabled(handDepthShadowToggle.checked);
+    applyHandDepthShadowState();
+  });
+}
+
 window.addEventListener("resize", () => {
   if (currentCards.length === 0) {
     return;
@@ -1725,7 +2281,10 @@ window.addEventListener("resize", () => {
 
 async function initializeApp() {
   initializeViewMode();
+  initializeHandLayoutMode();
+  initializeHandDepthShadowToggle();
   applyCardSizeCssVariables();
+  syncAlphaSliderForMode(true);
   updateHandGeometryValueLabels();
   updateHandModeControls();
   await initializeDecks();

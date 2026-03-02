@@ -15,11 +15,13 @@ function parseArgs(argv) {
     scenario: "",
     deck: "standard54-english",
     view: "hand",
+    hand_mode: "classic",
     count: "13",
     card_size: "186",
     visibility_factor: "0.50",
     alpha_deg: "4.0",
     phi_deg: "40.0",
+    demo_outer_drop: "2.0",
     browser_cmd: ""
   };
 
@@ -120,11 +122,13 @@ function buildTestUrl(options) {
     test: "1",
     deck: options.deck,
     view: options.view,
+    hand_mode: options.hand_mode,
     count: options.count,
     card_size: options.card_size,
     visibility_factor: options.visibility_factor,
     alpha_deg: options.alpha_deg,
-    phi_deg: options.phi_deg
+    phi_deg: options.phi_deg,
+    demo_outer_drop: options.demo_outer_drop
   });
 
   if (options.scenario) {
@@ -178,11 +182,13 @@ async function main() {
       {
         scenario: options.scenario || null,
         deck: options.deck,
+        handMode: options.hand_mode,
         count: Number(options.count),
         cardSizePx: Number(options.card_size),
         visibilityFactor: Number(options.visibility_factor),
         alphaDeg: Number(options.alpha_deg),
         phiDeg: Number(options.phi_deg),
+        demoOuterDropPct: Number(options.demo_outer_drop),
         serve: options.serve === "1"
       },
       null,

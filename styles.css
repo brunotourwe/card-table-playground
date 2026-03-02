@@ -252,11 +252,32 @@ body {
 .card-table--hand .card {
   position: absolute;
   margin-left: 0;
+  overflow: visible;
   transition:
     left var(--view-switch-duration) ease,
     top var(--view-switch-duration) ease,
     transform var(--view-switch-duration) ease,
     opacity var(--view-switch-duration) ease;
+}
+
+.card-table--hand-depth .card::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 82%;
+  height: 16%;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, var(--hand-shadow-opacity, 0.16));
+  transform: translate(-50%, calc(40% + var(--hand-shadow-shift-y, 0px)));
+  filter: blur(var(--hand-shadow-blur, 10px));
+  pointer-events: none;
+}
+
+.card-table--hand-depth .card > *,
+.card-table--hand-depth .card .card-wrapper {
+  position: relative;
+  z-index: 1;
 }
 
 .card-table--switching .card {
@@ -273,6 +294,10 @@ body {
 
 .card-table--hand-wireframe .card-face {
   visibility: hidden;
+}
+
+.card-table--hand-wireframe .card::after {
+  display: none;
 }
 
 .card-bounds-overlay {

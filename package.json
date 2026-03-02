@@ -8,6 +8,7 @@
     "decks:normalize": "node scripts/normalize-deck.js",
     "decks:index": "node scripts/decks/index.js",
     "decks:split-sheet": "node scripts/decks/split-sheet.js",
-    "hand:test": "node scripts/hand-visual-test.js"
+    "hand:test": "node scripts/hand-visual-test.js",
+    "hand:sort:test": "node scripts/hand-sorting-test.js"
   }
 }
