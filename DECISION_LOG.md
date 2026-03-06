@@ -1,6 +1,6 @@
 # Decision Log
 
-Last updated: 2026-03-02 (session 3)
+Last updated: 2026-03-05 (session 6)
 Status: Active
 
 ## Goal
@@ -190,7 +190,7 @@ Proposal:
 
 ### CTP-DEC-016 Hand layout model replacement
 
-Status: Confirmed
+Status: Partially superseded
 Date: 2026-03-01
 
 Decision:
@@ -200,6 +200,9 @@ Decision:
   - `visibilityFactor` (`0..1`)
   - `alphaDeg` (`0..15`)
   - `phiDeg` (`0..90`)
+
+Superseded scope:
+- `CTP-DEC-028` adds a second `demo` hand layout mode with its own active parameter set.
 
 ### CTP-DEC-017 Hand geometry model
 
@@ -305,7 +308,7 @@ Date: 2026-03-01
 Decision:
 - Hand cards are revealed left-to-right via staggered opacity animation (no positional movement during the fan).
 - Cards are placed at their final positions before the fan starts; the fan is a pure reveal effect.
-- Fan triggers: Draw button, Enter key, card-count spinner, deck switch, matrix→hand view switch, hand-layout slider release (from wireframe mode).
+- Fan triggers: Enter key redraw, card-count spinner change, deck switch, matrix→hand view switch, hand-layout slider release (from wireframe mode).
 - Hand→matrix switch retains the existing `card-view-switch` keyframe (simultaneous fade-in with translate+scale).
 - Right-to-left fan direction: deferred to backlog (CTP-WS02-02-4-06).
 
@@ -315,7 +318,7 @@ Status: Confirmed
 Date: 2026-03-01
 
 Decision:
-- While a hand-layout slider (VF, alphaDeg, phiDeg) is pointer-held, the hand switches to wireframe mode.
+- While an active hand-layout slider is pointer-held, the hand switches to wireframe mode.
 - Wireframe: card content (`card-face`) hidden; card border visible as a rotated rectangle outline; CSS transitions disabled (`transition: none`).
 - Layout updates are instant during wireframe mode (no CSS transition lag, no cascading jumps).
 - `pointerdown` interrupts any running fan animation and enters wireframe immediately.
@@ -329,8 +332,89 @@ Date: 2026-03-01
 
 Decision:
 - Two configurable parameters exposed as hand-layout controls:
-  - `fan step (s/card)`: time between consecutive card appearances. Range 0.02–0.20 s, default 0.05 s.
-  - `fan reveal (ms/card)`: duration of each individual card's fade-in animation. Range 50–400 ms, default 100 ms.
-- Both parameters are always immediately effective regardless of hand size.
-- Total animation duration = `(N − 1) × fanStep + fanReveal`.
-- Original `fan max total` design discarded: it had no visible effect for typical hand sizes (≤10 cards) because the natural total was already well below the 1.0 s default cap.
+  - `fan duration (s)`: soft cap for full-hand reveal timing. Range 0.5–2.0 s, default 1.0 s.
+  - `fan step (ms)`: preferred delay between consecutive card reveals. Range 10–100 ms, default 50 ms.
+- Effective reveal step is computed per hand as:
+  - `effectiveStepMs = min(fanStepMs, fanDurationMs / N)`
+- Cards are still revealed instantly at each step; there is no separate per-card fade-duration control in the current model.
+
+### CTP-DEC-028 Demo hand layout mode
+
+Status: Confirmed
+Date: 2026-03-02
+
+Decision:
+- Add a second hand layout mode `demo` alongside the classic circular fan.
+- `demo` keeps `visibilityFactor` but replaces classic `alphaDeg` / `phiDeg` behavior with:
+  - a reduced center `gap angle`
+  - an `outer drop` percentage control
+- `demo` is a shallow center fan with flattened outer shoulders and a soft outward downward drift.
+- `phiDeg` does not apply while `demo` mode is active.
+
+### CTP-DEC-029 Joker asset split and setup rules
+
+Status: Superseded
+Date: 2026-03-05
+
+Decision:
+- Joker artwork is modeled as global assets under `assets/jokers`, not as deck-local cards.
+- Setup uses a 52-card base deck plus optional joker injections at runtime.
+- Max joker count is `4`.
+- All injected jokers in one setup share the same single selected joker design.
+- When jokers are toggled on, the default selected design is the latest previously selected joker.
+- Future UX extension is planned for a deck-aware "best fitting joker" recommendation mode.
+
+Superseded by:
+- `CTP-DEC-030`
+
+### CTP-DEC-030 Deck-native jokers with global discovery
+
+Status: Confirmed
+Date: 2026-03-05
+
+Decision:
+- Joker assets stay in their native deck folders to preserve provenance.
+- Setup deck selection still builds from a 52-card base deck.
+- Joker picker offers all joker designs discovered across valid deck manifests.
+- Max joker count is `4`.
+- All injected jokers in one setup use the same selected joker design.
+- When jokers are toggled on, default to the latest previously selected joker design.
+- Future recommendation mode should prioritize jokers native to the selected deck.
+
+### CTP-DEC-031 Hand sorting control model v2
+
+Status: Confirmed
+Date: 2026-03-05
+
+Decision:
+- Add two sorting controls in hand view:
+  - `Suit sort`: `auto` / `manual`
+  - `Rank sort`: `on` / `off`
+- Effective behavior matrix:
+  - `auto + rank on` -> current semantic sort behavior.
+  - `manual + rank on` -> suit-group order follows received/manual baseline; ranks are sorted within suit groups.
+  - `rank off` -> no automatic sort (manual baseline), enabling future full manual arrangement.
+- Coercion rule:
+  - `auto + rank off` is not allowed; force effective mode to manual (`manual_free`).
+- Introduce immutable per-card `dealIndex` as deterministic baseline for manual modes.
+- Detailed algorithm and UI contract are defined in:
+  - `docs/specs/hand-sorting-v2.md`
+
+### CTP-DEC-032 Hand drag-reorder interaction v1
+
+Status: Confirmed
+Date: 2026-03-05
+
+Decision:
+- Add hover eject feedback in hand view:
+  - default hover ejects the card under pointer.
+  - modifier-hover (Shift/Ctrl/Alt) with `rank sort = on` ejects all cards of hovered suit.
+- Reorder behavior by sorting state:
+  - `rank sort = off`: allow single-card drag reorder and commit `manualCardOrder`.
+  - `rank sort = on`: allow modifier-based suit-block drag reorder and commit `manualSuitOrder`.
+- Suit drag is unavailable when `rank sort = off`.
+- First committed manual suit drag should switch suit sort mode to `manual` if it was `auto`.
+- Drag mode is latched on pointer-down and does not change until pointer-up.
+- v1 drag is reorder-only; play/discard interaction is deferred.
+- Detailed interaction contract is defined in:
+  - `docs/specs/hand-drag-interaction-v1.md`

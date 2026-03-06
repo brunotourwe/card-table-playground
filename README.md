@@ -36,13 +36,13 @@ For deck updates (adding cards, SVGs, metadata), use the deck pipeline commands 
 
 ### Card Size
 
-- Card height configurable via slider (90–372 px).
+- Card height configurable via slider (90–400 px).
 - Card width derives from height using a fixed aspect ratio.
 
 ### Table Views
 
 - **Hand view** — cards laid out as a held hand (default on first load).
-- **Matrix view** — cards arranged in a left-to-right grid (fixed row-size target).
+- **Matrix view** — cards arranged in a deterministic left-to-right grid with a fixed row-size target.
 - Animated transitions between views.
 - Selected view persists in `sessionStorage` across reloads.
 
@@ -101,12 +101,40 @@ Demo behavior:
 - `matrix` view remains unsorted.
 - Hand sorting is semantic; future right-to-left hand rendering should mirror placement only, not reverse the sorted sequence.
 - Current controls:
-  - `Enable sorting`
+  - `Suit sort`: `auto` or `manual`
+  - `Rank sort`: `on` or `off`
   - `Rank policy`: `high_low` or `low_high`
 - Suit-group ordering is optimized globally for alternating color, then resolved by full per-suit rank profile, then suit count, then fallback suit priority.
 - Jokers always remain in a separate final group.
 
-Detailed rules are defined in `docs/specs/hand-sorting-v1.md`.
+Detailed rules are defined in `docs/specs/hand-sorting-v2.md`.
+
+### Hand Drag and Reorder
+
+- Drag interactions apply only in **hand** view and are reorder-only in v1 (no play/discard action yet).
+- Card hover ejects the card in place (keeps fan position and tilt) with animated return.
+- Single-card drag is available in all hand sorting states:
+  - with `Rank sort=on`, dropping a card into a new position automatically switches `Rank sort` to `off`
+  - non-dragged cards keep their current sorted sequence on that transition
+- Suit-group drag is available while `Rank sort=on` and a modifier key is held (`Shift`, `Ctrl`, or `Alt`):
+  - all cards in the hovered suit group move together (jokers are one group)
+  - suit drag preview uses a normalized 2-slot visual gap
+  - suit drag pose follows the current hand curve continuously, including edge extrapolation
+- `Escape` cancels active drag and restores pre-drag order.
+
+Interaction and algorithm specs:
+- `docs/specs/hand-drag-interaction-v1.md`
+- `docs/specs/hand-card-drag-algorithm-v1.md`
+- `docs/specs/hand-suit-drag-algorithm-v1.md`
+
+### Joker Setup
+
+- Deck selector lists only 52-card base decks.
+- Joker designs are discovered from joker cards inside deck-native assets.
+- Joker toggle enables adding `0..4` jokers of one selected design to the base 52-card deck.
+- Default joker selection on toggle-on is the latest previously selected design.
+
+Detailed rules are defined in `docs/specs/deck-joker-assets-v2.md`.
 
 ### Table Frame Sizing
 
@@ -154,9 +182,11 @@ npm run hand:sort:test   # verify pure hand-sorting fixtures
 
 At runtime, `decks.runtime.js` exposes `__CTP_DECK_INDEX__`, `__CTP_DECK_MANIFESTS__`, and `__CTP_DECK_SVG__` as globals. Card SVGs are inlined at startup via `DOMParser`.
 
-### Current Deck
+### Available Decks
 
-`standard52-classic` — one standard 52-card deck with SVG card faces.
+- `standard52-french` — standard 52-card deck without jokers.
+- `standard54-english` — standard 54-card deck with two jokers.
+- Default startup deck: `standard54-english`.
 
 ---
 

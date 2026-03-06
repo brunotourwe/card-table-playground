@@ -10,7 +10,7 @@
     <div class="page-container">
       <header class="header">
         <h1>Card Table Playground</h1>
-        <p>Draw a random set of cards from the currently selected deck.</p>
+        <p>Draw a random set of cards from the currently selected deck. Press Enter to reshuffle and redraw the current hand.</p>
       </header>
 
       <section class="top-grid">
@@ -20,14 +20,26 @@
         </div>
 
         <div class="box col-span-2">
+          <div class="box-title">Jokers</div>
+          <div class="option-group">
+            <label class="option-row">
+              <input id="jokers-enabled" type="checkbox" />
+              Include jokers
+            </label>
+          </div>
+          <div id="joker-controls" class="joker-controls mode-toggle__subcontrol--hidden">
+            <label class="joker-inline" for="joker-count">
+              Count
+              <input id="joker-count" type="number" min="1" max="4" step="1" value="2" />
+            </label>
+            <select id="joker-design-select" aria-label="Select joker design"></select>
+          </div>
+        </div>
+
+        <div class="box col-span-2">
           <div class="box-title" id="card-count-label">Number of cards</div>
-          <div class="number-grid">
-            <div class="left-content">
-              <input id="card-count" type="number" min="1" max="52" value="7" />
-            </div>
-            <div class="left-content">
-              <button id="draw-button" type="button">Draw</button>
-            </div>
+          <div class="left-content">
+            <input id="card-count" type="number" min="1" max="52" value="13" />
           </div>
         </div>
 
@@ -79,11 +91,11 @@
             id="card-size-px"
             type="range"
             min="90"
-            max="372"
+            max="400"
             step="1"
-            value="186"
+            value="300"
           />
-          <div id="card-size-px-value" class="slider-value">186 px</div>
+          <div id="card-size-px-value" class="slider-value">300 px</div>
         </div>
 
         <div id="hand-layout-mode-box" class="box hand-layout-control">
@@ -100,12 +112,30 @@
           </div>
         </div>
 
-        <div id="hand-sort-box" class="box hand-layout-control">
-          <div class="box-title">Hand sorting</div>
+        <div class="box hand-layout-control">
+          <div class="box-title">Hand direction</div>
           <div class="option-group">
             <label class="option-row">
-              <input id="hand-sort-enabled" type="checkbox" checked />
-              Enable sorting
+              <input type="radio" name="hand-direction" value="ltr" checked />
+              LTR
+            </label>
+            <label class="option-row">
+              <input type="radio" name="hand-direction" value="rtl" />
+              RTL
+            </label>
+          </div>
+        </div>
+
+        <div id="hand-sort-box" class="box hand-layout-control">
+          <div class="box-title">Hand sorting</div>
+          <select id="hand-suit-sort-mode" aria-label="Hand suit sort mode">
+            <option value="auto" selected>Suit sort: auto</option>
+            <option value="manual">Suit sort: manual</option>
+          </select>
+          <div class="option-group">
+            <label class="option-row">
+              <input id="rank-sort-enabled" type="checkbox" checked />
+              Rank sort
             </label>
           </div>
           <select id="hand-rank-policy" aria-label="Hand rank policy">
@@ -192,21 +222,45 @@
           <div id="fan-step-ms-value" class="slider-value">50</div>
         </div>
 
-        <div class="box hand-layout-control">
+        <div class="box hand-layout-control shadow-control--hidden">
           <div class="box-title">Depth</div>
           <div class="option-group">
             <label class="option-row">
-              <input id="hand-depth-shadow-toggle" type="checkbox" checked />
+              <input id="hand-depth-shadow-toggle" type="checkbox" />
               Depth shadows
             </label>
           </div>
+        </div>
+
+        <div class="box slider-box hand-layout-control shadow-control--hidden">
+          <div class="box-title">Shadow strength</div>
+          <input
+            id="hand-depth-shadow-strength"
+            type="range"
+            min="0"
+            max="200"
+            step="5"
+            value="100"
+          />
+          <div id="hand-depth-shadow-strength-value" class="slider-value">100%</div>
+        </div>
+
+        <div class="box hand-layout-control shadow-control--hidden">
+          <div class="box-title">Shadow direction</div>
+          <div
+            id="hand-depth-shadow-direction-clock"
+            class="shadow-clock"
+            role="radiogroup"
+            aria-label="Depth shadow direction"
+          ></div>
+          <div id="hand-depth-shadow-direction-value" class="slider-value">6 o'clock</div>
         </div>
 
         <div class="box hand-layout-control">
           <div class="box-title">Animation</div>
           <div class="option-group">
             <label class="option-row">
-              <input id="fan-animate-toggle" type="checkbox" checked />
+              <input id="fan-animate-toggle" type="checkbox" />
               Fan animation
             </label>
           </div>

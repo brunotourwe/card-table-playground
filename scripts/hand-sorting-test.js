@@ -6,20 +6,32 @@ const {
   sortHandCards
 } = require("../hand-sorting.js");
 
-function makeCard(cardId, suit, rank) {
-  return {
+function makeCard(cardId, suit, rank, dealIndex = null) {
+  const card = {
     cardId,
     suit,
     rank
   };
+
+  if (Number.isInteger(dealIndex) && dealIndex >= 0) {
+    card.dealIndex = dealIndex;
+  }
+
+  return card;
 }
 
-function makeJoker(cardId) {
-  return {
+function makeJoker(cardId, dealIndex = null) {
+  const joker = {
     cardId,
     suit: null,
     rank: "JOKER"
   };
+
+  if (Number.isInteger(dealIndex) && dealIndex >= 0) {
+    joker.dealIndex = dealIndex;
+  }
+
+  return joker;
 }
 
 function getCardIds(cards) {
@@ -207,6 +219,28 @@ function testOnlyEqualCardsUseOriginalDrawOrder() {
   assert.deepStrictEqual(getCardIds(heartsGroup.cards), ["h1", "h2"]);
 }
 
+function testDealIndexOverridesCurrentArrayOrderForStableTies() {
+  const hand = [
+    makeCard("h-later", "hearts", "9", 5),
+    makeCard("h-earlier", "hearts", "9", 2),
+    makeCard("s-top", "spades", "A", 1),
+    makeJoker("joker-later", 4),
+    makeJoker("joker-earlier", 3)
+  ];
+
+  const result = sortHandCards(hand, {
+    rankPolicy: "high_low"
+  });
+
+  assert.deepStrictEqual(getCardIds(result.sortedCards), [
+    "s-top",
+    "h-earlier",
+    "h-later",
+    "joker-earlier",
+    "joker-later"
+  ]);
+}
+
 function testChooseSuitOrderWorksDirectly() {
   const groupMap = {
     hearts: [makeCard("hA", "hearts", "A")],
@@ -237,6 +271,7 @@ function run() {
   testLongerProfileWinsAfterEqualPrefix();
   testSameColorFinalFallbackSuitPriority();
   testOnlyEqualCardsUseOriginalDrawOrder();
+  testDealIndexOverridesCurrentArrayOrderForStableTies();
   testChooseSuitOrderWorksDirectly();
   console.log("hand-sorting-test: ok");
 }

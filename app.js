@@ -5,16 +5,21 @@ const tableScroll = document.querySelector(".table-scroll");
 const cardCountInput = document.getElementById("card-count");
 const cardCountLabel = document.getElementById("card-count-label");
 const deckSelect = document.getElementById("deck-select");
-const drawButton = document.getElementById("draw-button");
+const jokersEnabledToggle = document.getElementById("jokers-enabled");
+const jokerControls = document.getElementById("joker-controls");
+const jokerCountInput = document.getElementById("joker-count");
+const jokerDesignSelect = document.getElementById("joker-design-select");
 const statusMessage = document.getElementById("status");
 const renderModeInputs = document.querySelectorAll(
   "input[name=\"render-mode\"]"
 );
 const viewModeInputs = document.querySelectorAll("input[name=\"view-mode\"]");
 const handLayoutModeInputs = document.querySelectorAll("input[name=\"hand-layout-mode\"]");
+const handDirectionInputs = document.querySelectorAll("input[name=\"hand-direction\"]");
 const handLayoutControls = document.querySelectorAll(".hand-layout-control");
 const cardSizeBox = document.getElementById("card-size-box");
-const handSortEnabledToggle = document.getElementById("hand-sort-enabled");
+const handSuitSortModeSelect = document.getElementById("hand-suit-sort-mode");
+const rankSortEnabledToggle = document.getElementById("rank-sort-enabled");
 const handRankPolicySelect = document.getElementById("hand-rank-policy");
 const showCardBoundsToggle = document.getElementById("show-card-bounds");
 const showHandCurveToggle = document.getElementById("show-hand-curve");
@@ -32,6 +37,12 @@ const demoOuterDropBox = document.getElementById("demo-outer-drop-box");
 const demoOuterDropSlider = document.getElementById("demo-outer-drop-pct");
 const demoOuterDropSliderValue = document.getElementById("demo-outer-drop-pct-value");
 const handDepthShadowToggle = document.getElementById("hand-depth-shadow-toggle");
+const handDepthShadowStrengthSlider = document.getElementById("hand-depth-shadow-strength");
+const handDepthShadowStrengthSliderValue = document.getElementById(
+  "hand-depth-shadow-strength-value"
+);
+const handDepthShadowDirectionClock = document.getElementById("hand-depth-shadow-direction-clock");
+const handDepthShadowDirectionValue = document.getElementById("hand-depth-shadow-direction-value");
 const fanDurationSlider = document.getElementById("fan-duration-sec");
 const fanDurationSliderValue = document.getElementById("fan-duration-sec-value");
 const fanStepMsSlider = document.getElementById("fan-step-ms");
@@ -41,10 +52,18 @@ const fanAnimateToggle = document.getElementById("fan-animate-toggle");
 let currentCards = [];
 let currentViewMode = "hand";
 let availableDecks = [];
+let availableJokers = [];
 let activeDeck = null;
 const VIEW_STORAGE_KEY = "ctp:view-mode";
 const HAND_LAYOUT_MODE_STORAGE_KEY = "ctp:hand-layout-mode";
+const HAND_DIRECTION_STORAGE_KEY = "ctp:hand-direction";
+const JOKERS_ENABLED_STORAGE_KEY = "ctp:jokers-enabled";
+const JOKER_COUNT_STORAGE_KEY = "ctp:joker-count";
+const JOKER_SELECTED_STORAGE_KEY = "ctp:selected-joker-id";
+const JOKER_LAST_SELECTED_STORAGE_KEY = "ctp:last-selected-joker-id";
 const HAND_DEPTH_SHADOW_STORAGE_KEY = "ctp:hand-depth-shadow";
+const HAND_DEPTH_SHADOW_STRENGTH_STORAGE_KEY = "ctp:hand-depth-shadow-strength";
+const HAND_DEPTH_SHADOW_DIRECTION_STORAGE_KEY = "ctp:hand-depth-shadow-direction";
 const DECK_INDEX_PATH = "assets/decks/decks.index.json";
 const DEFAULT_DECK_ID = "standard54-english";
 const HAND_SORTING_API = globalThis.__CTP_HAND_SORTING__ ?? null;
@@ -63,6 +82,7 @@ let fanAnimationTimeoutId = null;
 let renderRequestId = 0;
 let isWireframeMode = false;
 let fanCardTimeoutIds = [];
+const normalizedDeckCache = new Map();
 const svgMarkupCache = new Map();
 const STANDARD_SUIT_CONFIG = [
   { suit: "spades", symbol: "♠︎" },
@@ -70,6 +90,8 @@ const STANDARD_SUIT_CONFIG = [
   { suit: "diamonds", symbol: "♦︎" },
   { suit: "clubs", symbol: "♣︎" }
 ];
+const STANDARD_SUIT_SET = new Set(STANDARD_SUIT_CONFIG.map((entry) => entry.suit));
+const JOKER_GROUP_KEY = "jokers";
 const DEFAULT_RANK_LABELS = {
   A: "Ace",
   K: "King",
@@ -94,12 +116,18 @@ const DEFAULT_SUIT_LABELS = {
 };
 
 const DEFAULT_VIEW_MODE = "hand";
-const BASE_CARD_HEIGHT_PX = 130;
-const IDEAL_CARD_HEIGHT_PX = Math.round(BASE_CARD_HEIGHT_PX / 0.7);
+const DEFAULT_CARD_COUNT = 13;
+const DEFAULT_CARD_HEIGHT_PX = 300;
 const MIN_CARD_HEIGHT_PX = 90;
-const MAX_CARD_HEIGHT_PX = IDEAL_CARD_HEIGHT_PX * 2;
+const MAX_CARD_HEIGHT_PX = 400;
 const DEFAULT_HAND_LAYOUT_MODE = "classic";
-const DEFAULT_HAND_SORT_ENABLED = true;
+const DEFAULT_HAND_DIRECTION = "ltr";
+const DEFAULT_JOKERS_ENABLED = false;
+const MIN_JOKER_COUNT = 1;
+const MAX_JOKER_COUNT = 4;
+const DEFAULT_JOKER_COUNT = 2;
+const DEFAULT_HAND_SUIT_SORT_MODE = "auto";
+const DEFAULT_RANK_SORT_ENABLED = true;
 const DEFAULT_HAND_RANK_POLICY = "high_low";
 const DEFAULT_VISIBILITY_FACTOR = 0.5;
 const DEFAULT_ALPHA_DEG = 4;
@@ -108,24 +136,48 @@ const DEMO_MIN_ALPHA_DEG = 0.3;
 const DEMO_MAX_ALPHA_DEG = 2.0;
 const DEFAULT_DEMO_ALPHA_DEG = 0.8;
 const DEFAULT_DEMO_OUTER_DROP_PCT = 2.0;
-const DEFAULT_HAND_DEPTH_SHADOW_ENABLED = true;
+const DEFAULT_HAND_DEPTH_SHADOW_ENABLED = false;
+const DEFAULT_HAND_DEPTH_SHADOW_STRENGTH_PCT = 100;
+const MIN_HAND_DEPTH_SHADOW_STRENGTH_PCT = 0;
+const MAX_HAND_DEPTH_SHADOW_STRENGTH_PCT = 200;
+const DEFAULT_HAND_DEPTH_SHADOW_DIRECTION_HOUR_INDEX = 6;
+const HAND_DEPTH_SHADOW_DIRECTION_STEPS = 12;
 const DEFAULT_FAN_DURATION_SEC = 1.0;
 const MIN_FAN_DURATION_SEC = 0.5;
 const MAX_FAN_DURATION_SEC = 2.0;
 const DEFAULT_FAN_STEP_MS = 50;
 const MIN_FAN_STEP_MS = 10;
 const MAX_FAN_STEP_MS = 100;
+const HAND_HOVER_EJECT_RATIO = 0.07;
+const CARD_DRAG_START_THRESHOLD_PX = 7;
+const CARD_DRAG_DIRECTION_DEADZONE_PX = 2;
+const SUIT_DRAG_GAP_SLOT_COUNT = 2;
+const SUIT_DRAG_SHADOW_MODEL_ENABLED = true;
 const URL_PARAMS = new URLSearchParams(window.location.search);
 const TEST_MODE = URL_PARAMS.get("test") === "1";
 const TEST_SCENARIO = URL_PARAMS.get("scenario") ?? "";
 const testScenarioHistory = [];
 let classicAlphaDegValue = DEFAULT_ALPHA_DEG;
 let demoAlphaDegValue = DEFAULT_DEMO_ALPHA_DEG;
+let jokersEnabled = DEFAULT_JOKERS_ENABLED;
+let jokerCount = DEFAULT_JOKER_COUNT;
+let selectedJokerId = null;
+let lastSelectedJokerId = null;
+let handSuitSortModeBeforeRankSortOff = null;
+let handHoverMode = "none";
+let hoveredCardId = null;
+let hoveredGroupKey = null;
+let manualCardOrder = null;
+let manualSuitOrder = null;
+let cardDragState = null;
 
 function getDeckMaxCount() {
-  return activeDeck && Array.isArray(activeDeck.cards) && activeDeck.cards.length > 0
-    ? activeDeck.cards.length
-    : 52;
+  const baseCount =
+    activeDeck && Array.isArray(activeDeck.cards) && activeDeck.cards.length > 0
+      ? activeDeck.cards.length
+      : 52;
+
+  return baseCount + getJokerInjectionCount();
 }
 
 function updateCardCountRangeLabel() {
@@ -139,7 +191,7 @@ function updateCardCountRangeLabel() {
   const currentValue = Number.parseInt(cardCountInput.value, 10);
 
   if (!Number.isFinite(currentValue) || currentValue < 1) {
-    cardCountInput.value = `${Math.min(7, maxCount)}`;
+    cardCountInput.value = `${Math.min(DEFAULT_CARD_COUNT, maxCount)}`;
     return;
   }
 
@@ -192,6 +244,15 @@ function normalizeDeckEntry(rawDeck) {
     };
   });
 
+  const baseCards = normalizedCards.filter((card) => card.rank !== "JOKER");
+  const nativeJokers = normalizedCards.filter((card) => card.rank === "JOKER");
+
+  if (baseCards.length !== 52) {
+    throw new Error(
+      `Deck '${rawDeck.deckId ?? "unknown"}' does not contain a 52-card base set after joker split.`
+    );
+  }
+
   return {
     deckId: rawDeck.deckId,
     title: rawDeck.title ?? rawDeck.deckId,
@@ -206,8 +267,302 @@ function normalizeDeckEntry(rawDeck) {
       ...DEFAULT_SUIT_LABELS,
       ...(rawDeck.locale?.suitLabels ?? {})
     },
-    cards: normalizedCards
+    cards: baseCards,
+    baseCards,
+    nativeJokers,
+    allCards: normalizedCards
   };
+}
+
+function isSelectableDeckEntry(deckEntry) {
+  return (
+    deckEntry &&
+    deckEntry.status === "valid" &&
+    typeof deckEntry.manifestPath === "string" &&
+    deckEntry.manifestPath.length > 0
+  );
+}
+
+function isSelectableBaseDeckEntry(deckEntry) {
+  return isSelectableDeckEntry(deckEntry) && deckEntry.model?.kind === "standard52";
+}
+
+function toJokerIdSegment(value, fallback = "joker") {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized.length > 0 ? normalized : fallback;
+}
+
+function buildDerivedJokerTitle(deckTitle, cardId, jokerOrdinal) {
+  const normalizedDeckTitle =
+    typeof deckTitle === "string" && deckTitle.trim().length > 0 ? deckTitle.trim() : "Deck";
+  const suffix = cardId ?? `joker-${jokerOrdinal}`;
+  return `${normalizedDeckTitle} / ${suffix}`;
+}
+
+function setAvailableJokers(jokers) {
+  availableJokers = Array.isArray(jokers) ? jokers : [];
+  window.__CTP_JOKER_CATALOG__ = availableJokers.map((entry) => ({ ...entry }));
+  reconcileJokerSetupState();
+  syncJokerSetupControls();
+}
+
+function clampJokerCount(value) {
+  const parsed = Number.parseInt(`${value}`, 10);
+  if (!Number.isInteger(parsed)) {
+    return DEFAULT_JOKER_COUNT;
+  }
+
+  return Math.min(MAX_JOKER_COUNT, Math.max(MIN_JOKER_COUNT, parsed));
+}
+
+function findAvailableJokerById(jokerId) {
+  if (typeof jokerId !== "string" || jokerId.length === 0) {
+    return null;
+  }
+
+  return availableJokers.find((entry) => entry.jokerId === jokerId) ?? null;
+}
+
+function getStoredBoolean(key, fallback) {
+  try {
+    const rawValue = sessionStorage.getItem(key);
+    if (rawValue === null) {
+      return fallback;
+    }
+
+    return rawValue === "1";
+  } catch (_error) {
+    return fallback;
+  }
+}
+
+function setStoredBoolean(key, value) {
+  try {
+    sessionStorage.setItem(key, value ? "1" : "0");
+  } catch (_error) {
+    // Ignore storage failures in local/file-browser contexts.
+  }
+}
+
+function getStoredInteger(key, fallback, clampFn) {
+  try {
+    const rawValue = sessionStorage.getItem(key);
+    if (rawValue === null) {
+      return clampFn(fallback);
+    }
+
+    return clampFn(rawValue);
+  } catch (_error) {
+    return clampFn(fallback);
+  }
+}
+
+function setStoredInteger(key, value, clampFn) {
+  try {
+    sessionStorage.setItem(key, `${clampFn(value)}`);
+  } catch (_error) {
+    // Ignore storage failures in local/file-browser contexts.
+  }
+}
+
+function getStoredString(key) {
+  try {
+    const rawValue = sessionStorage.getItem(key);
+    return typeof rawValue === "string" && rawValue.length > 0 ? rawValue : null;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function setStoredStringOrClear(key, value) {
+  try {
+    if (typeof value === "string" && value.length > 0) {
+      sessionStorage.setItem(key, value);
+    } else {
+      sessionStorage.removeItem(key);
+    }
+  } catch (_error) {
+    // Ignore storage failures in local/file-browser contexts.
+  }
+}
+
+function initializeJokerSetupState() {
+  jokersEnabled = getStoredBoolean(JOKERS_ENABLED_STORAGE_KEY, DEFAULT_JOKERS_ENABLED);
+  jokerCount = getStoredInteger(JOKER_COUNT_STORAGE_KEY, DEFAULT_JOKER_COUNT, clampJokerCount);
+  selectedJokerId = getStoredString(JOKER_SELECTED_STORAGE_KEY);
+  lastSelectedJokerId = getStoredString(JOKER_LAST_SELECTED_STORAGE_KEY);
+
+  if (!lastSelectedJokerId && selectedJokerId) {
+    lastSelectedJokerId = selectedJokerId;
+  }
+}
+
+function persistJokerSetupState() {
+  setStoredBoolean(JOKERS_ENABLED_STORAGE_KEY, jokersEnabled);
+  setStoredInteger(JOKER_COUNT_STORAGE_KEY, jokerCount, clampJokerCount);
+  setStoredStringOrClear(JOKER_SELECTED_STORAGE_KEY, selectedJokerId);
+  setStoredStringOrClear(JOKER_LAST_SELECTED_STORAGE_KEY, lastSelectedJokerId);
+}
+
+function getPreferredJokerSelectionId() {
+  if (findAvailableJokerById(lastSelectedJokerId)) {
+    return lastSelectedJokerId;
+  }
+
+  return availableJokers[0]?.jokerId ?? null;
+}
+
+function reconcileJokerSetupState() {
+  jokerCount = clampJokerCount(jokerCount);
+
+  if (selectedJokerId && !findAvailableJokerById(selectedJokerId)) {
+    selectedJokerId = null;
+  }
+
+  if (lastSelectedJokerId && !findAvailableJokerById(lastSelectedJokerId)) {
+    lastSelectedJokerId = null;
+  }
+
+  if (availableJokers.length === 0) {
+    jokersEnabled = false;
+    selectedJokerId = null;
+    lastSelectedJokerId = null;
+    persistJokerSetupState();
+    publishJokerSetupState();
+    return;
+  }
+
+  if (jokersEnabled && !selectedJokerId) {
+    selectedJokerId = getPreferredJokerSelectionId();
+  }
+
+  if (selectedJokerId) {
+    lastSelectedJokerId = selectedJokerId;
+  }
+
+  persistJokerSetupState();
+  publishJokerSetupState();
+}
+
+function publishJokerSetupState() {
+  window.__CTP_JOKER_SETUP__ = {
+    jokersEnabled,
+    jokerCount,
+    selectedJokerId,
+    lastSelectedJokerId
+  };
+}
+
+function populateJokerDesignSelect() {
+  if (!jokerDesignSelect) {
+    return;
+  }
+
+  jokerDesignSelect.innerHTML = "";
+
+  if (availableJokers.length === 0) {
+    const emptyOption = document.createElement("option");
+    emptyOption.value = "";
+    emptyOption.textContent = "No jokers available";
+    jokerDesignSelect.appendChild(emptyOption);
+    jokerDesignSelect.disabled = true;
+    return;
+  }
+
+  availableJokers.forEach((joker) => {
+    const option = document.createElement("option");
+    option.value = joker.jokerId;
+    option.textContent = joker.title;
+    jokerDesignSelect.appendChild(option);
+  });
+
+  const selectionId = selectedJokerId ?? getPreferredJokerSelectionId();
+  if (selectionId) {
+    jokerDesignSelect.value = selectionId;
+    selectedJokerId = selectionId;
+    lastSelectedJokerId = selectionId;
+  }
+}
+
+function syncJokerSetupControls() {
+  populateJokerDesignSelect();
+
+  if (jokersEnabledToggle) {
+    jokersEnabledToggle.checked = jokersEnabled;
+    jokersEnabledToggle.disabled = availableJokers.length === 0;
+  }
+
+  const hasSelectableJoker = findAvailableJokerById(selectedJokerId) !== null;
+  const enableDetails = jokersEnabled && hasSelectableJoker;
+
+  if (jokerControls) {
+    jokerControls.classList.toggle("mode-toggle__subcontrol--hidden", !jokersEnabled);
+  }
+
+  if (jokerCountInput) {
+    jokerCountInput.value = `${jokerCount}`;
+    jokerCountInput.disabled = !enableDetails;
+  }
+
+  if (jokerDesignSelect) {
+    if (hasSelectableJoker) {
+      jokerDesignSelect.value = selectedJokerId;
+    }
+    jokerDesignSelect.disabled = !jokersEnabled || availableJokers.length === 0;
+  }
+
+  persistJokerSetupState();
+  publishJokerSetupState();
+  updateCardCountRangeLabel();
+}
+
+function getSelectedJokerEntry() {
+  if (!jokersEnabled) {
+    return null;
+  }
+
+  return findAvailableJokerById(selectedJokerId);
+}
+
+function getJokerInjectionCount() {
+  if (!getSelectedJokerEntry()) {
+    return 0;
+  }
+
+  return jokerCount;
+}
+
+function buildRuntimeDeckCards() {
+  const baseDeckCards = activeDeck && Array.isArray(activeDeck.cards) ? activeDeck.cards : [];
+  const selectedJoker = getSelectedJokerEntry();
+
+  if (!selectedJoker || jokerCount <= 0) {
+    return baseDeckCards.slice();
+  }
+
+  const injectedJokers = [];
+  for (let index = 0; index < jokerCount; index += 1) {
+    injectedJokers.push({
+      cardId: `${selectedJoker.jokerId}::${index + 1}`,
+      rank: "JOKER",
+      suit: null,
+      symbol: "🃏",
+      assetPath: selectedJoker.assetPath,
+      jokerDesignId: selectedJoker.jokerId,
+      jokerInstanceIndex: index + 1
+    });
+  }
+
+  return baseDeckCards.concat(injectedJokers);
 }
 
 async function fetchDeckIndex() {
@@ -234,26 +589,103 @@ function setActiveDeck(deck) {
 }
 
 async function loadDeckByManifestPath(manifestPath) {
-  if (
-    PRELOADED_DECK_MANIFESTS &&
-    Object.prototype.hasOwnProperty.call(PRELOADED_DECK_MANIFESTS, manifestPath)
-  ) {
-    return normalizeDeckEntry(PRELOADED_DECK_MANIFESTS[manifestPath]);
+  if (normalizedDeckCache.has(manifestPath)) {
+    return normalizedDeckCache.get(manifestPath);
   }
 
-  const response = await fetch(manifestPath);
-  if (!response.ok) {
-    throw new Error(`Failed to load deck manifest: ${manifestPath}`);
-  }
+  const loadPromise = (async () => {
+    if (
+      PRELOADED_DECK_MANIFESTS &&
+      Object.prototype.hasOwnProperty.call(PRELOADED_DECK_MANIFESTS, manifestPath)
+    ) {
+      return normalizeDeckEntry(PRELOADED_DECK_MANIFESTS[manifestPath]);
+    }
 
-  const payload = await response.json();
-  return normalizeDeckEntry(payload);
+    const response = await fetch(manifestPath);
+    if (!response.ok) {
+      throw new Error(`Failed to load deck manifest: ${manifestPath}`);
+    }
+
+    const payload = await response.json();
+    return normalizeDeckEntry(payload);
+  })();
+
+  normalizedDeckCache.set(manifestPath, loadPromise);
+
+  try {
+    return await loadPromise;
+  } catch (error) {
+    normalizedDeckCache.delete(manifestPath);
+    throw error;
+  }
+}
+
+async function buildDerivedJokerCatalog(deckEntries) {
+  const selectableDecks = Array.isArray(deckEntries)
+    ? deckEntries.filter((deckEntry) => isSelectableDeckEntry(deckEntry))
+    : [];
+  const loadedDecks = await Promise.all(
+    selectableDecks.map(async (deckEntry) => {
+      try {
+        return await loadDeckByManifestPath(deckEntry.manifestPath);
+      } catch (_error) {
+        return null;
+      }
+    })
+  );
+  const dedupeKeys = new Set();
+  const jokers = [];
+
+  loadedDecks.forEach((deck) => {
+    if (!deck || !Array.isArray(deck.nativeJokers)) {
+      return;
+    }
+
+    let jokerOrdinal = 0;
+    deck.nativeJokers.forEach((card) => {
+      if (!card || typeof card.assetPath !== "string" || card.assetPath.length === 0) {
+        return;
+      }
+
+      jokerOrdinal += 1;
+      const rawCardId =
+        typeof card.cardId === "string" && card.cardId.trim().length > 0
+          ? card.cardId.trim()
+          : null;
+      const dedupeKey = rawCardId
+        ? `${deck.deckId}::${rawCardId}`
+        : `${deck.deckId}::${card.assetPath}`;
+
+      if (dedupeKeys.has(dedupeKey)) {
+        return;
+      }
+
+      dedupeKeys.add(dedupeKey);
+      jokers.push({
+        jokerId: `${deck.deckId}:${toJokerIdSegment(rawCardId ?? card.assetPath, `joker-${jokerOrdinal}`)}`,
+        title: buildDerivedJokerTitle(deck.title, rawCardId, jokerOrdinal),
+        sourceDeckId: deck.deckId,
+        sourceDeckTitle: deck.title,
+        cardId: rawCardId,
+        assetPath: card.assetPath
+      });
+    });
+  });
+
+  return jokers.sort((left, right) => {
+    const deckCompare = left.sourceDeckTitle.localeCompare(right.sourceDeckTitle);
+    if (deckCompare !== 0) {
+      return deckCompare;
+    }
+
+    return left.title.localeCompare(right.title);
+  });
 }
 
 async function selectDeckById(deckId) {
   const selected = availableDecks.find((deckEntry) => deckEntry.deckId === deckId);
 
-  if (!selected || selected.status !== "valid" || typeof selected.manifestPath !== "string") {
+  if (!selected || !isSelectableBaseDeckEntry(selected)) {
     throw new Error(`Deck '${deckId}' is not available.`);
   }
 
@@ -293,6 +725,14 @@ async function applyUrlDrivenTestConfig() {
       input.checked = input.value === requestedHandLayoutMode;
     });
     setStoredHandLayoutMode(requestedHandLayoutMode);
+  }
+
+  const requestedHandDirection = URL_PARAMS.get("hand_direction");
+  if (requestedHandDirection && isSupportedHandDirection(requestedHandDirection)) {
+    handDirectionInputs.forEach((input) => {
+      input.checked = input.value === requestedHandDirection;
+    });
+    setStoredHandDirection(requestedHandDirection);
   }
 
   syncAlphaSliderForMode(true);
@@ -353,7 +793,7 @@ function populateDeckSelect() {
       deckEntry.status === "valid"
         ? `${deckEntry.title}`
         : `${deckEntry.title ?? deckEntry.deckId} (invalid)`;
-    const selectable = deckEntry.status === "valid" && typeof deckEntry.manifestPath === "string";
+    const selectable = isSelectableBaseDeckEntry(deckEntry);
     option.disabled = !selectable;
     hasSelectableDeck = hasSelectableDeck || selectable;
     deckSelect.appendChild(option);
@@ -367,11 +807,11 @@ async function initializeDecks() {
 
   try {
     availableDecks = await fetchDeckIndex();
+    const derivedJokers = await buildDerivedJokerCatalog(availableDecks);
+    setAvailableJokers(derivedJokers);
     populateDeckSelect();
 
-    const firstValidDeck = availableDecks.find(
-      (deckEntry) => deckEntry.status === "valid" && typeof deckEntry.manifestPath === "string"
-    );
+    const firstValidDeck = availableDecks.find((deckEntry) => isSelectableBaseDeckEntry(deckEntry));
     if (!firstValidDeck) {
       throw new Error("No valid normalized decks available.");
     }
@@ -380,8 +820,7 @@ async function initializeDecks() {
       availableDecks.find(
         (deckEntry) =>
           deckEntry.deckId === DEFAULT_DECK_ID &&
-          deckEntry.status === "valid" &&
-          typeof deckEntry.manifestPath === "string"
+          isSelectableBaseDeckEntry(deckEntry)
       ) ?? firstValidDeck;
 
     if (deckSelect) {
@@ -390,13 +829,12 @@ async function initializeDecks() {
     }
 
     await selectDeckById(preferredDeck.deckId);
-    drawButton.disabled = false;
     clearStatus();
   } catch (_error) {
     availableDecks = [];
+    setAvailableJokers([]);
     populateDeckSelect();
     setActiveDeck(null);
-    drawButton.disabled = true;
     cardTable.innerHTML = "";
     setStatus("No normalized decks available. Run npm run decks:normalize.");
   }
@@ -415,10 +853,23 @@ function shuffleDeck(deck) {
   return shuffled;
 }
 
+function createDealtCard(card, dealIndex) {
+  const dealtCard = { ...card };
+
+  Object.defineProperty(dealtCard, "dealIndex", {
+    value: dealIndex,
+    writable: false,
+    enumerable: true,
+    configurable: false
+  });
+
+  return dealtCard;
+}
+
 function drawCards(count) {
-  const deck = activeDeck && Array.isArray(activeDeck.cards) ? activeDeck.cards : [];
+  const deck = buildRuntimeDeckCards();
   const shuffled = shuffleDeck(deck);
-  return shuffled.slice(0, count);
+  return shuffled.slice(0, count).map((card, dealIndex) => createDealtCard(card, dealIndex));
 }
 
 function clearStatus() {
@@ -474,7 +925,9 @@ function createInlineSvgElement(svgMarkup, altText) {
 
 async function createCardElement(card, mode) {
   const cardElement = document.createElement("div");
-  cardElement.dataset.suit = card.suit;
+  cardElement.dataset.cardId = card.cardId ?? "";
+  cardElement.dataset.rank = card.rank;
+  cardElement.dataset.suit = typeof card.suit === "string" ? card.suit : "";
 
   if (mode === "image") {
     cardElement.className = "card card--image";
@@ -559,6 +1012,14 @@ function isSupportedHandLayoutMode(value) {
   return value === "classic" || value === "demo";
 }
 
+function isSupportedHandDirection(value) {
+  return value === "ltr" || value === "rtl";
+}
+
+function isSupportedHandDepthShadowDirectionHourIndex(value) {
+  return Number.isInteger(value) && value >= 0 && value < HAND_DEPTH_SHADOW_DIRECTION_STEPS;
+}
+
 function getStoredViewMode() {
   try {
     const storedMode = sessionStorage.getItem(VIEW_STORAGE_KEY);
@@ -611,12 +1072,53 @@ function setStoredHandLayoutMode(mode) {
   }
 }
 
+function getStoredHandDirection() {
+  try {
+    const storedDirection = sessionStorage.getItem(HAND_DIRECTION_STORAGE_KEY);
+    return isSupportedHandDirection(storedDirection) ? storedDirection : DEFAULT_HAND_DIRECTION;
+  } catch (_error) {
+    return DEFAULT_HAND_DIRECTION;
+  }
+}
+
+function setStoredHandDirection(direction) {
+  if (!isSupportedHandDirection(direction)) {
+    return;
+  }
+
+  try {
+    sessionStorage.setItem(HAND_DIRECTION_STORAGE_KEY, direction);
+  } catch (_error) {
+    // Ignore storage failures in local/file-browser contexts.
+  }
+}
+
 function initializeHandLayoutMode() {
   const initialMode = getStoredHandLayoutMode();
 
   handLayoutModeInputs.forEach((input) => {
     input.checked = input.value === initialMode;
   });
+}
+
+function initializeHandDirection() {
+  const initialDirection = getStoredHandDirection();
+
+  handDirectionInputs.forEach((input) => {
+    input.checked = input.value === initialDirection;
+  });
+}
+
+function initializeHandSortingControls() {
+  if (handSuitSortModeSelect && !isSupportedHandSuitSortMode(handSuitSortModeSelect.value)) {
+    handSuitSortModeSelect.value = DEFAULT_HAND_SUIT_SORT_MODE;
+  }
+
+  if (rankSortEnabledToggle) {
+    rankSortEnabledToggle.checked = DEFAULT_RANK_SORT_ENABLED;
+  }
+
+  enforceHandSortControlCoercion();
 }
 
 function getStoredHandDepthShadowEnabled() {
@@ -639,12 +1141,168 @@ function setStoredHandDepthShadowEnabled(enabled) {
   }
 }
 
+function getStoredHandDepthShadowStrengthPct() {
+  try {
+    const storedValue = sessionStorage.getItem(HAND_DEPTH_SHADOW_STRENGTH_STORAGE_KEY);
+    if (storedValue === null) {
+      return DEFAULT_HAND_DEPTH_SHADOW_STRENGTH_PCT;
+    }
+
+    const parsed = Number.parseInt(storedValue, 10);
+    if (!Number.isInteger(parsed)) {
+      return DEFAULT_HAND_DEPTH_SHADOW_STRENGTH_PCT;
+    }
+
+    return Math.min(
+      MAX_HAND_DEPTH_SHADOW_STRENGTH_PCT,
+      Math.max(MIN_HAND_DEPTH_SHADOW_STRENGTH_PCT, parsed)
+    );
+  } catch (_error) {
+    return DEFAULT_HAND_DEPTH_SHADOW_STRENGTH_PCT;
+  }
+}
+
+function setStoredHandDepthShadowStrengthPct(value) {
+  const clampedValue = Math.min(
+    MAX_HAND_DEPTH_SHADOW_STRENGTH_PCT,
+    Math.max(MIN_HAND_DEPTH_SHADOW_STRENGTH_PCT, Math.round(value))
+  );
+
+  try {
+    sessionStorage.setItem(HAND_DEPTH_SHADOW_STRENGTH_STORAGE_KEY, `${clampedValue}`);
+  } catch (_error) {
+    // Ignore storage failures in local/file-browser contexts.
+  }
+}
+
+function getStoredHandDepthShadowDirectionHourIndex() {
+  try {
+    const storedValue = sessionStorage.getItem(HAND_DEPTH_SHADOW_DIRECTION_STORAGE_KEY);
+    if (storedValue === null) {
+      return DEFAULT_HAND_DEPTH_SHADOW_DIRECTION_HOUR_INDEX;
+    }
+
+    const parsed = Number.parseInt(storedValue, 10);
+    return isSupportedHandDepthShadowDirectionHourIndex(parsed)
+      ? parsed
+      : DEFAULT_HAND_DEPTH_SHADOW_DIRECTION_HOUR_INDEX;
+  } catch (_error) {
+    return DEFAULT_HAND_DEPTH_SHADOW_DIRECTION_HOUR_INDEX;
+  }
+}
+
+function setStoredHandDepthShadowDirectionHourIndex(hourIndex) {
+  if (!isSupportedHandDepthShadowDirectionHourIndex(hourIndex)) {
+    return;
+  }
+
+  try {
+    sessionStorage.setItem(HAND_DEPTH_SHADOW_DIRECTION_STORAGE_KEY, `${hourIndex}`);
+  } catch (_error) {
+    // Ignore storage failures in local/file-browser contexts.
+  }
+}
+
 function initializeHandDepthShadowToggle() {
   if (!handDepthShadowToggle) {
     return;
   }
 
-  handDepthShadowToggle.checked = getStoredHandDepthShadowEnabled();
+  handDepthShadowToggle.checked = false;
+}
+
+function formatHandDepthShadowDirectionLabel(hourIndex) {
+  const hourValue = hourIndex === 0 ? 12 : hourIndex;
+  return `${hourValue} o'clock`;
+}
+
+function getHandDepthShadowDirectionHourIndex() {
+  if (!handDepthShadowDirectionClock) {
+    return DEFAULT_HAND_DEPTH_SHADOW_DIRECTION_HOUR_INDEX;
+  }
+
+  const parsed = Number.parseInt(handDepthShadowDirectionClock.dataset.selectedHourIndex ?? "", 10);
+  return isSupportedHandDepthShadowDirectionHourIndex(parsed)
+    ? parsed
+    : DEFAULT_HAND_DEPTH_SHADOW_DIRECTION_HOUR_INDEX;
+}
+
+function syncHandDepthShadowDirectionClock() {
+  if (!handDepthShadowDirectionClock) {
+    return;
+  }
+
+  const selectedHourIndex = getHandDepthShadowDirectionHourIndex();
+  handDepthShadowDirectionClock
+    .querySelectorAll(".shadow-clock__hour")
+    .forEach((button) => {
+      const buttonHourIndex = Number.parseInt(button.dataset.hourIndex ?? "", 10);
+      const isActive = buttonHourIndex === selectedHourIndex;
+      button.classList.toggle("shadow-clock__hour--active", isActive);
+      button.setAttribute("aria-checked", isActive ? "true" : "false");
+    });
+
+  if (handDepthShadowDirectionValue) {
+    handDepthShadowDirectionValue.textContent = formatHandDepthShadowDirectionLabel(
+      selectedHourIndex
+    );
+  }
+}
+
+function setHandDepthShadowDirectionHourIndex(hourIndex, persist = true) {
+  if (!isSupportedHandDepthShadowDirectionHourIndex(hourIndex)) {
+    return;
+  }
+
+  if (handDepthShadowDirectionClock) {
+    handDepthShadowDirectionClock.dataset.selectedHourIndex = `${hourIndex}`;
+  }
+
+  if (persist) {
+    setStoredHandDepthShadowDirectionHourIndex(hourIndex);
+  }
+
+  syncHandDepthShadowDirectionClock();
+}
+
+function initializeHandDepthShadowStrengthSlider() {
+  if (!handDepthShadowStrengthSlider) {
+    return;
+  }
+
+  handDepthShadowStrengthSlider.value = `${getStoredHandDepthShadowStrengthPct()}`;
+}
+
+function initializeHandDepthShadowDirectionClock() {
+  if (!handDepthShadowDirectionClock) {
+    return;
+  }
+
+  handDepthShadowDirectionClock.innerHTML = "";
+
+  for (let hourIndex = 0; hourIndex < HAND_DEPTH_SHADOW_DIRECTION_STEPS; hourIndex += 1) {
+    const hourButton = document.createElement("button");
+    const angleRad = degToRad((hourIndex * 30) - 90);
+
+    hourButton.type = "button";
+    hourButton.className = "shadow-clock__hour";
+    hourButton.dataset.hourIndex = `${hourIndex}`;
+    hourButton.style.setProperty("--shadow-clock-x", `${Math.cos(angleRad).toFixed(4)}`);
+    hourButton.style.setProperty("--shadow-clock-y", `${Math.sin(angleRad).toFixed(4)}`);
+    hourButton.setAttribute("role", "radio");
+    hourButton.setAttribute(
+      "aria-label",
+      `Set shadow direction to ${formatHandDepthShadowDirectionLabel(hourIndex)}`
+    );
+    hourButton.title = formatHandDepthShadowDirectionLabel(hourIndex);
+    hourButton.addEventListener("click", () => {
+      setHandDepthShadowDirectionHourIndex(hourIndex);
+      refreshHandLayoutFromControls();
+    });
+    handDepthShadowDirectionClock.appendChild(hourButton);
+  }
+
+  setHandDepthShadowDirectionHourIndex(getStoredHandDepthShadowDirectionHourIndex(), false);
 }
 
 function getViewMode() {
@@ -661,17 +1319,88 @@ function getHandLayoutMode() {
     : DEFAULT_HAND_LAYOUT_MODE;
 }
 
+function getHandDirection() {
+  const selected = document.querySelector("input[name=\"hand-direction\"]:checked");
+  return selected && isSupportedHandDirection(selected.value)
+    ? selected.value
+    : DEFAULT_HAND_DIRECTION;
+}
+
+function isSupportedHandSuitSortMode(value) {
+  return value === "auto" || value === "manual";
+}
+
 function isSupportedHandRankPolicy(value) {
   return value === "high_low" || value === "low_high";
 }
 
-function isHandSortEnabled() {
+function getHandSuitSortMode() {
+  if (!handSuitSortModeSelect || !isSupportedHandSuitSortMode(handSuitSortModeSelect.value)) {
+    return DEFAULT_HAND_SUIT_SORT_MODE;
+  }
+
+  return handSuitSortModeSelect.value;
+}
+
+function isRankSortEnabled() {
   return HAND_SORTING_API !== null &&
     (
-      handSortEnabledToggle
-        ? handSortEnabledToggle.checked
-        : DEFAULT_HAND_SORT_ENABLED
+      rankSortEnabledToggle
+        ? rankSortEnabledToggle.checked
+        : DEFAULT_RANK_SORT_ENABLED
     );
+}
+
+function enforceHandSortControlCoercion() {
+  if (!handSuitSortModeSelect) {
+    return;
+  }
+
+  if (!isRankSortEnabled()) {
+    if (
+      handSuitSortModeBeforeRankSortOff === null &&
+      isSupportedHandSuitSortMode(handSuitSortModeSelect.value)
+    ) {
+      handSuitSortModeBeforeRankSortOff = handSuitSortModeSelect.value;
+    }
+
+    handSuitSortModeSelect.value = "manual";
+    return;
+  }
+
+  if (
+    handSuitSortModeBeforeRankSortOff !== null &&
+    isSupportedHandSuitSortMode(handSuitSortModeBeforeRankSortOff)
+  ) {
+    handSuitSortModeSelect.value = handSuitSortModeBeforeRankSortOff;
+  }
+  handSuitSortModeBeforeRankSortOff = null;
+
+  if (!isSupportedHandSuitSortMode(handSuitSortModeSelect.value)) {
+    handSuitSortModeSelect.value = DEFAULT_HAND_SUIT_SORT_MODE;
+  }
+}
+
+function getRequestedHandSortConfig() {
+  return {
+    suitSortMode: getHandSuitSortMode(),
+    rankSortEnabled: isRankSortEnabled(),
+    rankPolicy: getHandRankPolicy()
+  };
+}
+
+function getEffectiveHandSortMode() {
+  const requestedConfig = getRequestedHandSortConfig();
+
+  if (!requestedConfig.rankSortEnabled) {
+    return "manual_free";
+  }
+
+  if (requestedConfig.suitSortMode === "manual") {
+    return "manual_suits_ranked";
+  }
+
+  return "auto_ranked";
 }
 
 function getHandRankPolicy() {
@@ -682,12 +1411,236 @@ function getHandRankPolicy() {
   return handRankPolicySelect.value;
 }
 
-function getCardsForView(cards, viewMode) {
-  if (viewMode !== "hand" || !isHandSortEnabled()) {
+function getCardDealIndex(card, fallbackIndex) {
+  const candidate = card?.dealIndex;
+  if (Number.isInteger(candidate) && candidate >= 0) {
+    return candidate;
+  }
+
+  return fallbackIndex;
+}
+
+function getCardsInDealOrder(cards) {
+  if (!Array.isArray(cards) || cards.length <= 1) {
     return cards;
   }
 
+  return cards
+    .map((card, sourceIndex) => ({
+      card,
+      sourceIndex,
+      dealIndex: getCardDealIndex(card, sourceIndex)
+    }))
+    .sort((left, right) => {
+      if (left.dealIndex !== right.dealIndex) {
+        return left.dealIndex - right.dealIndex;
+      }
+
+      return left.sourceIndex - right.sourceIndex;
+    })
+    .map((entry) => entry.card);
+}
+
+function areCardIdSetsEqual(leftIds, rightIds) {
+  if (!Array.isArray(leftIds) || !Array.isArray(rightIds) || leftIds.length !== rightIds.length) {
+    return false;
+  }
+
+  const leftSet = new Set(leftIds);
+  if (leftSet.size !== leftIds.length) {
+    return false;
+  }
+
+  for (let index = 0; index < rightIds.length; index += 1) {
+    if (!leftSet.has(rightIds[index])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function clearManualCardOrder() {
+  manualCardOrder = null;
+}
+
+function clearManualSuitOrder() {
+  manualSuitOrder = null;
+}
+
+function getCardGroupKey(card) {
+  if (!card || typeof card !== "object") {
+    return null;
+  }
+
+  if (card.rank === "JOKER") {
+    return JOKER_GROUP_KEY;
+  }
+
+  return isStandardSuit(card.suit) ? card.suit : null;
+}
+
+function getCardElementGroupKey(cardElement) {
+  if (!(cardElement instanceof HTMLElement)) {
+    return null;
+  }
+
+  if (cardElement.dataset.rank === "JOKER") {
+    return JOKER_GROUP_KEY;
+  }
+
+  const suit = cardElement.dataset.suit;
+  return isStandardSuit(suit) ? suit : null;
+}
+
+function isSupportedManualGroupKey(groupKey) {
+  return groupKey === JOKER_GROUP_KEY || isStandardSuit(groupKey);
+}
+
+function areGroupKeySetsEqual(leftKeys, rightKeys) {
+  if (!Array.isArray(leftKeys) || !Array.isArray(rightKeys) || leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+
+  const leftSet = new Set(leftKeys);
+  if (leftSet.size !== leftKeys.length) {
+    return false;
+  }
+
+  for (let index = 0; index < rightKeys.length; index += 1) {
+    if (!leftSet.has(rightKeys[index])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function getCardsByManualOrder(cards) {
+  const cardsInDealOrder = getCardsInDealOrder(cards);
+
+  if (!Array.isArray(cardsInDealOrder) || cardsInDealOrder.length <= 1) {
+    return cardsInDealOrder;
+  }
+
+  if (!Array.isArray(manualCardOrder) || manualCardOrder.length !== cardsInDealOrder.length) {
+    return cardsInDealOrder;
+  }
+
+  const cardById = new Map();
+
+  for (let index = 0; index < cardsInDealOrder.length; index += 1) {
+    const card = cardsInDealOrder[index];
+    const cardId = card?.cardId;
+
+    if (typeof cardId !== "string" || cardId.length === 0 || cardById.has(cardId)) {
+      clearManualCardOrder();
+      return cardsInDealOrder;
+    }
+
+    cardById.set(cardId, card);
+  }
+
+  if (!areCardIdSetsEqual(manualCardOrder, Array.from(cardById.keys()))) {
+    clearManualCardOrder();
+    return cardsInDealOrder;
+  }
+
+  return manualCardOrder.map((cardId) => cardById.get(cardId));
+}
+
+function sortCardsByManualSuitsRanked(cards) {
+  if (!Array.isArray(cards) || cards.length === 0) {
+    return cards;
+  }
+
+  const cardsInDealOrder = getCardsInDealOrder(cards);
+  const annotatedCards = cardsInDealOrder.map((card, fallbackIndex) => ({
+    card,
+    originalIndex: getCardDealIndex(card, fallbackIndex)
+  }));
+  const suitBuckets = STANDARD_SUIT_CONFIG.reduce((buckets, entry) => {
+    buckets[entry.suit] = [];
+    return buckets;
+  }, {});
+  const groupOrder = [];
+  const groupSeen = new Set();
+  const jokers = [];
+
+  annotatedCards.forEach((entry) => {
+    if (entry.card.rank === "JOKER") {
+      jokers.push(entry);
+      if (!groupSeen.has(JOKER_GROUP_KEY)) {
+        groupSeen.add(JOKER_GROUP_KEY);
+        groupOrder.push(JOKER_GROUP_KEY);
+      }
+      return;
+    }
+
+    const suit = entry.card.suit;
+    if (!Object.prototype.hasOwnProperty.call(suitBuckets, suit)) {
+      return;
+    }
+
+    suitBuckets[suit].push(entry);
+
+    if (!groupSeen.has(suit)) {
+      groupSeen.add(suit);
+      groupOrder.push(suit);
+    }
+  });
+
+  const sortedEntriesByGroup = new Map();
+  const rankPolicy = getHandRankPolicy();
+  groupOrder.forEach((groupKey) => {
+    if (groupKey === JOKER_GROUP_KEY) {
+      sortedEntriesByGroup.set(groupKey, [...jokers]);
+      return;
+    }
+
+    const suit = groupKey;
+    const sortedSuitEntries = HAND_SORTING_API.sortSuitCards(suitBuckets[suit], rankPolicy);
+    sortedEntriesByGroup.set(groupKey, sortedSuitEntries);
+  });
+
+  let effectiveGroupOrder = [...groupOrder];
+
+  if (Array.isArray(manualSuitOrder) && manualSuitOrder.length > 0) {
+    const normalizedManualOrder = manualSuitOrder.filter((groupKey) => isSupportedManualGroupKey(groupKey));
+    if (areGroupKeySetsEqual(normalizedManualOrder, groupOrder)) {
+      effectiveGroupOrder = normalizedManualOrder;
+    } else {
+      clearManualSuitOrder();
+    }
+  }
+
+  const sorted = [];
+  effectiveGroupOrder.forEach((groupKey) => {
+    const groupEntries = sortedEntriesByGroup.get(groupKey) ?? [];
+    groupEntries.forEach((entry) => {
+      sorted.push(entry.card);
+    });
+  });
+
+  return sorted;
+}
+
+function getCardsForView(cards, viewMode) {
+  if (viewMode !== "hand" || HAND_SORTING_API === null) {
+    return cards;
+  }
+
+  const effectiveSortMode = getEffectiveHandSortMode();
+
+  if (effectiveSortMode === "manual_free") {
+    return getCardsByManualOrder(cards);
+  }
+
   try {
+    if (effectiveSortMode === "manual_suits_ranked") {
+      return sortCardsByManualSuitsRanked(cards);
+    }
+
     return HAND_SORTING_API.sortHandCards(cards, {
       rankPolicy: getHandRankPolicy()
     }).sortedCards;
@@ -696,10 +1649,1709 @@ function getCardsForView(cards, viewMode) {
   }
 }
 
+function isCardDragEnabled() {
+  return getViewMode() === "hand";
+}
+
+function isCardDragTrackedPointer(event) {
+  return cardDragState !== null &&
+    cardDragState.mode === "card" &&
+    cardDragState.pointerId === event.pointerId;
+}
+
+function isCardDragActive() {
+  return cardDragState !== null && cardDragState.mode === "card" && cardDragState.active === true;
+}
+
+function isSuitDragTrackedPointer(event) {
+  return cardDragState !== null &&
+    cardDragState.mode === "suit" &&
+    cardDragState.pointerId === event.pointerId;
+}
+
+function isSuitDragActive() {
+  return cardDragState !== null && cardDragState.mode === "suit" && cardDragState.active === true;
+}
+
+function isAnyDragActive() {
+  return cardDragState !== null && cardDragState.active === true;
+}
+
+function isSuitDragEnabled() {
+  return getViewMode() === "hand" && isRankSortEnabled();
+}
+
+function resetCardDragState() {
+  if (
+    cardDragState &&
+    cardDragState.dragCardElement &&
+    Number.isInteger(cardDragState.pointerId) &&
+    typeof cardDragState.dragCardElement.hasPointerCapture === "function" &&
+    cardDragState.dragCardElement.hasPointerCapture(cardDragState.pointerId)
+  ) {
+    cardDragState.dragCardElement.releasePointerCapture(cardDragState.pointerId);
+  }
+
+  cardDragState = null;
+  cardTable.classList.remove("card-table--dragging");
+  cardTable.querySelectorAll(".card").forEach((cardElement) => {
+    cardElement.style.removeProperty("transition");
+    cardElement.style.removeProperty("pointer-events");
+  });
+}
+
+function getCardElementsInCurrentLayoutOrder() {
+  const cardElements = Array.from(cardTable.querySelectorAll(".card"));
+
+  if (!isAnyDragActive() || !Array.isArray(cardDragState.previewOrderCardIds)) {
+    return cardElements;
+  }
+
+  const orderIndexByCardId = new Map();
+  cardDragState.previewOrderCardIds.forEach((cardId, index) => {
+    if (typeof cardId === "string" && cardId.length > 0 && !orderIndexByCardId.has(cardId)) {
+      orderIndexByCardId.set(cardId, index);
+    }
+  });
+
+  return cardElements
+    .map((cardElement, domIndex) => ({
+      cardElement,
+      domIndex,
+      orderIndex: orderIndexByCardId.has(cardElement.dataset.cardId)
+        ? orderIndexByCardId.get(cardElement.dataset.cardId)
+        : Number.MAX_SAFE_INTEGER
+    }))
+    .sort((left, right) => {
+      if (left.orderIndex !== right.orderIndex) {
+        return left.orderIndex - right.orderIndex;
+      }
+
+      return left.domIndex - right.domIndex;
+    })
+    .map((entry) => entry.cardElement);
+}
+
+function getDraggedSuitGroupCenterClientX() {
+  if (!isSuitDragActive()) {
+    return null;
+  }
+
+  const draggedCenterX =
+    cardDragState.dragGroupStartClientCenterX +
+    (cardDragState.lastClientX - cardDragState.startClientX);
+  return Number.isFinite(draggedCenterX) ? draggedCenterX : null;
+}
+
+function getSuitDragVirtualGapCardSlots() {
+  return Math.max(0, SUIT_DRAG_GAP_SLOT_COUNT);
+}
+
+function getSuitDragCardsBeforeInsertionGap() {
+  if (!isSuitDragActive()) {
+    return 0;
+  }
+
+  const previewOrderGroupKeys = Array.isArray(cardDragState.previewOrderGroupKeys)
+    ? cardDragState.previewOrderGroupKeys
+    : [];
+  const groupOrderWithoutDragged = previewOrderGroupKeys.filter(
+    (groupKey) => groupKey !== cardDragState.dragGroupKey
+  );
+  const rawInsertionIndex = Number.isInteger(cardDragState.insertionIndex)
+    ? cardDragState.insertionIndex
+    : groupOrderWithoutDragged.length;
+  const insertionGroupIndex = Math.max(
+    0,
+    Math.min(rawInsertionIndex, groupOrderWithoutDragged.length)
+  );
+  const cardIdsByGroup = cardDragState.cardIdsByGroup instanceof Map
+    ? cardDragState.cardIdsByGroup
+    : null;
+
+  let cardsBeforeGap = 0;
+  for (let index = 0; index < insertionGroupIndex; index += 1) {
+    const groupKey = groupOrderWithoutDragged[index];
+    const groupCardIds = cardIdsByGroup?.get(groupKey);
+    cardsBeforeGap += Array.isArray(groupCardIds) ? groupCardIds.length : 0;
+  }
+
+  return cardsBeforeGap;
+}
+
+function buildSuitDragLayoutPlan(cardElements) {
+  if (!isSuitDragActive() || !Array.isArray(cardElements) || cardElements.length === 0) {
+    return null;
+  }
+
+  const draggedCardIds = Array.isArray(cardDragState.dragCardIds) ? cardDragState.dragCardIds : [];
+  if (draggedCardIds.length === 0) {
+    return null;
+  }
+
+  const draggedCardIdSet = new Set(draggedCardIds);
+  const nonDraggedEntries = [];
+  const draggedEntries = [];
+
+  cardElements.forEach((cardElement, orderIndex) => {
+    const cardId = cardElement?.dataset?.cardId;
+    if (typeof cardId !== "string" || cardId.length === 0) {
+      return;
+    }
+
+    const entry = { cardElement, orderIndex };
+    if (draggedCardIdSet.has(cardId)) {
+      draggedEntries.push(entry);
+      return;
+    }
+
+    nonDraggedEntries.push(entry);
+  });
+
+  const virtualGapCardSlots = getSuitDragVirtualGapCardSlots();
+  const virtualCardCount = nonDraggedEntries.length + virtualGapCardSlots;
+  if (virtualCardCount <= 0) {
+    return null;
+  }
+
+  const metrics = getHandLayoutMetrics(virtualCardCount);
+  if (!metrics || !Array.isArray(metrics.cardLayouts) || metrics.cardLayouts.length === 0) {
+    return null;
+  }
+
+  const maxCardsBeforeGap = nonDraggedEntries.length;
+  const cardsBeforeGap = Math.max(
+    0,
+    Math.min(getSuitDragCardsBeforeInsertionGap(), maxCardsBeforeGap)
+  );
+  const layoutEntries = [];
+
+  nonDraggedEntries.forEach((entry, nonDraggedIndex) => {
+    const layoutIndex = nonDraggedIndex < cardsBeforeGap
+      ? nonDraggedIndex
+      : nonDraggedIndex + virtualGapCardSlots;
+    layoutEntries.push({
+      ...entry,
+      layoutIndex
+    });
+  });
+
+  const gapMidpointIndex = cardsBeforeGap + (virtualGapCardSlots / 2);
+  const dragLayoutIndex = Math.max(
+    0,
+    Math.min(
+      metrics.cardLayouts.length - 1,
+      Math.round(Math.max(0, gapMidpointIndex - 0.5))
+    )
+  );
+
+  draggedEntries.forEach((entry) => {
+    layoutEntries.push({
+      ...entry,
+      layoutIndex: dragLayoutIndex
+    });
+  });
+
+  layoutEntries.sort((left, right) => left.orderIndex - right.orderIndex);
+
+  return {
+    metrics,
+    layoutEntries
+  };
+}
+
+function buildSuitDragShadowLayoutPlan(cardElements, fullMetrics) {
+  if (
+    !SUIT_DRAG_SHADOW_MODEL_ENABLED ||
+    !isSuitDragActive() ||
+    !Array.isArray(cardElements) ||
+    cardElements.length === 0
+  ) {
+    return null;
+  }
+
+  if (
+    !fullMetrics ||
+    !Array.isArray(fullMetrics.cardLayouts) ||
+    !Number.isFinite(fullMetrics.cardWidth) ||
+    !Number.isFinite(fullMetrics.cardHeight)
+  ) {
+    return null;
+  }
+
+  const cardIdSet = new Set();
+  cardElements.forEach((cardElement) => {
+    const cardId = cardElement?.dataset?.cardId;
+    if (typeof cardId === "string" && cardId.length > 0) {
+      cardIdSet.add(cardId);
+    }
+  });
+  if (cardIdSet.size !== cardElements.length) {
+    return null;
+  }
+
+  const previewOrderGroupKeys = Array.isArray(cardDragState.previewOrderGroupKeys)
+    ? cardDragState.previewOrderGroupKeys
+    : [];
+  const groupOrderWithoutDragged = previewOrderGroupKeys.filter(
+    (groupKey) => groupKey !== cardDragState.dragGroupKey
+  );
+  const insertionSlotCount = groupOrderWithoutDragged.length + 1;
+  const cardIdsByGroup = cardDragState.cardIdsByGroup;
+  const dragCardIds = Array.isArray(cardDragState.dragCardIds) ? cardDragState.dragCardIds : [];
+  if (!(cardIdsByGroup instanceof Map) || dragCardIds.length === 0 || insertionSlotCount <= 0) {
+    return null;
+  }
+
+  const tableRect = cardTable.getBoundingClientRect();
+  const plans = [];
+  for (let insertionIndex = 0; insertionIndex < insertionSlotCount; insertionIndex += 1) {
+    const nextGroupOrder = [...groupOrderWithoutDragged];
+    nextGroupOrder.splice(insertionIndex, 0, cardDragState.dragGroupKey);
+    const nextCardOrder = buildPreviewCardOrderFromGroups(
+      nextGroupOrder,
+      cardIdsByGroup,
+      cardDragState.trailingCardIds ?? []
+    );
+
+    if (nextCardOrder.length !== fullMetrics.cardLayouts.length) {
+      return null;
+    }
+
+    const layoutsById = new Map();
+    for (let layoutIndex = 0; layoutIndex < nextCardOrder.length; layoutIndex += 1) {
+      const cardId = nextCardOrder[layoutIndex];
+      if (!cardIdSet.has(cardId)) {
+        return null;
+      }
+
+      const cardLayout = fullMetrics.cardLayouts[layoutIndex];
+      if (
+        !cardLayout ||
+        !Number.isFinite(cardLayout.left) ||
+        !Number.isFinite(cardLayout.top) ||
+        !Number.isFinite(cardLayout.thetaDeg)
+      ) {
+        return null;
+      }
+
+      layoutsById.set(cardId, {
+        left: cardLayout.left,
+        top: cardLayout.top,
+        thetaDeg: cardLayout.thetaDeg
+      });
+    }
+
+    let centerSumX = 0;
+    let centerSumY = 0;
+    let centerCount = 0;
+    dragCardIds.forEach((cardId) => {
+      const dragLayout = layoutsById.get(cardId);
+      if (!dragLayout) {
+        return;
+      }
+
+      centerSumX += dragLayout.left + (fullMetrics.cardWidth / 2);
+      centerSumY += dragLayout.top + (fullMetrics.cardHeight / 2);
+      centerCount += 1;
+    });
+
+    if (centerCount <= 0) {
+      return null;
+    }
+
+    const centerTableX = centerSumX / centerCount;
+    const centerTableY = centerSumY / centerCount;
+    const centerClientX = tableRect.left + centerTableX;
+    if (!Number.isFinite(centerClientX)) {
+      return null;
+    }
+
+    plans.push({
+      insertionIndex,
+      centerClientX,
+      centerTableX,
+      centerTableY,
+      layoutsById
+    });
+  }
+
+  if (plans.length === 0) {
+    return null;
+  }
+
+  const sortedPlans = [...plans].sort((left, right) => left.centerClientX - right.centerClientX);
+  const referenceClientX = getDraggedSuitGroupCenterClientX();
+  const fallbackPlan = sortedPlans[0];
+  if (!Number.isFinite(referenceClientX)) {
+    return {
+      layoutsById: fallbackPlan.layoutsById,
+      centerTableX: fallbackPlan.centerTableX,
+      centerTableY: fallbackPlan.centerTableY
+    };
+  }
+
+  if (sortedPlans.length === 1) {
+    const singlePlan = sortedPlans[0];
+    return {
+      layoutsById: singlePlan.layoutsById,
+      centerTableX: singlePlan.centerTableX,
+      centerTableY: singlePlan.centerTableY
+    };
+  }
+
+  const firstPlan = sortedPlans[0];
+  const lastPlan = sortedPlans[sortedPlans.length - 1];
+  let leftPlan = null;
+  let rightPlan = null;
+  if (referenceClientX <= firstPlan.centerClientX) {
+    leftPlan = firstPlan;
+    rightPlan = sortedPlans[1];
+  } else if (referenceClientX >= lastPlan.centerClientX) {
+    leftPlan = sortedPlans[sortedPlans.length - 2];
+    rightPlan = lastPlan;
+  } else {
+    for (let index = 0; index < sortedPlans.length - 1; index += 1) {
+      const candidateLeft = sortedPlans[index];
+      const candidateRight = sortedPlans[index + 1];
+      if (referenceClientX >= candidateLeft.centerClientX && referenceClientX <= candidateRight.centerClientX) {
+        leftPlan = candidateLeft;
+        rightPlan = candidateRight;
+        break;
+      }
+    }
+  }
+
+  if (!leftPlan || !rightPlan) {
+    return {
+      layoutsById: fallbackPlan.layoutsById,
+      centerTableX: fallbackPlan.centerTableX,
+      centerTableY: fallbackPlan.centerTableY
+    };
+  }
+
+  const span = rightPlan.centerClientX - leftPlan.centerClientX;
+  const interpolationT = !Number.isFinite(span) || Math.abs(span) <= 0.0001
+    ? 0
+    : ((referenceClientX - leftPlan.centerClientX) / span);
+  const lerp = (leftValue, rightValue) => leftValue + (rightValue - leftValue) * interpolationT;
+  const interpolatedLayoutsById = new Map();
+  dragCardIds.forEach((cardId) => {
+    const leftLayout = leftPlan.layoutsById.get(cardId);
+    const rightLayout = rightPlan.layoutsById.get(cardId);
+    if (!leftLayout || !rightLayout) {
+      return;
+    }
+
+    interpolatedLayoutsById.set(cardId, {
+      left: lerp(leftLayout.left, rightLayout.left),
+      top: lerp(leftLayout.top, rightLayout.top),
+      thetaDeg: lerp(leftLayout.thetaDeg, rightLayout.thetaDeg)
+    });
+  });
+
+  if (interpolatedLayoutsById.size === 0) {
+    return null;
+  }
+
+  return {
+    layoutsById: interpolatedLayoutsById,
+    centerTableX: lerp(leftPlan.centerTableX, rightPlan.centerTableX),
+    centerTableY: lerp(leftPlan.centerTableY, rightPlan.centerTableY)
+  };
+}
+
+function getInterpolatedSampleValueByClientX(samples, referenceClientX, valueKey) {
+  if (!Array.isArray(samples) || samples.length === 0 || !Number.isFinite(referenceClientX)) {
+    return null;
+  }
+
+  const sortedSamples = samples
+    .filter((sample) => (
+      sample &&
+      Number.isFinite(sample.centerX) &&
+      Number.isFinite(sample[valueKey])
+    ))
+    .sort((left, right) => left.centerX - right.centerX);
+  if (sortedSamples.length === 0) {
+    return null;
+  }
+
+  const firstSample = sortedSamples[0];
+  const lastSample = sortedSamples[sortedSamples.length - 1];
+  const getEdgeExtrapolatedValue = (baseSample, adjacentSample) => {
+    if (!baseSample || !adjacentSample) {
+      return baseSample?.[valueKey] ?? null;
+    }
+
+    const deltaX = adjacentSample.centerX - baseSample.centerX;
+    if (!Number.isFinite(deltaX) || Math.abs(deltaX) <= 0.0001) {
+      return baseSample[valueKey];
+    }
+
+    const slope = (adjacentSample[valueKey] - baseSample[valueKey]) / deltaX;
+    return baseSample[valueKey] + slope * (referenceClientX - baseSample.centerX);
+  };
+
+  if (referenceClientX <= firstSample.centerX) {
+    if (sortedSamples.length === 1) {
+      return firstSample[valueKey];
+    }
+
+    return getEdgeExtrapolatedValue(firstSample, sortedSamples[1]);
+  }
+
+  if (referenceClientX >= lastSample.centerX) {
+    if (sortedSamples.length === 1) {
+      return lastSample[valueKey];
+    }
+
+    return getEdgeExtrapolatedValue(lastSample, sortedSamples[sortedSamples.length - 2]);
+  }
+
+  for (let index = 0; index < sortedSamples.length - 1; index += 1) {
+    const leftSample = sortedSamples[index];
+    const rightSample = sortedSamples[index + 1];
+
+    if (referenceClientX < leftSample.centerX || referenceClientX > rightSample.centerX) {
+      continue;
+    }
+
+    const span = rightSample.centerX - leftSample.centerX;
+    if (!Number.isFinite(span) || span <= 0) {
+      return leftSample[valueKey];
+    }
+
+    const ratio = (referenceClientX - leftSample.centerX) / span;
+    return leftSample[valueKey] + (rightSample[valueKey] - leftSample[valueKey]) * ratio;
+  }
+
+  return lastSample[valueKey];
+}
+
+function getInterpolatedTiltDegFromSamples(tiltSamples, referenceClientX) {
+  return getInterpolatedSampleValueByClientX(tiltSamples, referenceClientX, "tiltDeg");
+}
+
+function buildSuitDragCurveSamples(layoutEntries, metrics) {
+  if (!isSuitDragActive() || !Array.isArray(layoutEntries) || !metrics) {
+    return [];
+  }
+
+  const cardLayouts = Array.isArray(metrics.cardLayouts) ? metrics.cardLayouts : [];
+  const tableRect = cardTable.getBoundingClientRect();
+  const draggedCardIdSet = new Set(Array.isArray(cardDragState.dragCardIds) ? cardDragState.dragCardIds : []);
+  const curveSamples = [];
+
+  layoutEntries.forEach((entry) => {
+    const cardElement = entry?.cardElement;
+    const cardId = cardElement?.dataset?.cardId;
+    if (typeof cardId !== "string" || draggedCardIdSet.has(cardId)) {
+      return;
+    }
+
+    const layoutIndex = Number.isInteger(entry.layoutIndex) ? entry.layoutIndex : -1;
+    if (layoutIndex < 0 || layoutIndex >= cardLayouts.length) {
+      return;
+    }
+
+    const cardLayout = cardLayouts[layoutIndex];
+    if (!cardLayout || !Number.isFinite(cardLayout.thetaDeg)) {
+      return;
+    }
+
+    const centerX = tableRect.left + cardLayout.left + (metrics.cardWidth / 2);
+    const centerTableX = cardLayout.left + (metrics.cardWidth / 2);
+    const centerTableY = cardLayout.top + (metrics.cardHeight / 2);
+    if (!Number.isFinite(centerX)) {
+      return;
+    }
+
+    curveSamples.push({
+      centerX,
+      centerTableX,
+      centerTableY,
+      tiltDeg: cardLayout.thetaDeg
+    });
+  });
+
+  return curveSamples;
+}
+
+function getSuitDragCurveSampleAtClientX(curveSamples, referenceClientX) {
+  if (!Array.isArray(curveSamples) || curveSamples.length === 0 || !Number.isFinite(referenceClientX)) {
+    return null;
+  }
+
+  const centerTableX = getInterpolatedSampleValueByClientX(curveSamples, referenceClientX, "centerTableX");
+  const centerTableY = getInterpolatedSampleValueByClientX(curveSamples, referenceClientX, "centerTableY");
+  const tiltDeg = getInterpolatedTiltDegFromSamples(curveSamples, referenceClientX);
+  if (!Number.isFinite(centerTableX) || !Number.isFinite(centerTableY) || !Number.isFinite(tiltDeg)) {
+    return null;
+  }
+
+  return {
+    centerTableX,
+    centerTableY,
+    tiltDeg
+  };
+}
+
+function getSuitDragTargetTiltDegFromLayoutEntries(layoutEntries, metrics, curveSamples = null) {
+  if (!isSuitDragActive() || !Array.isArray(layoutEntries) || !metrics) {
+    return null;
+  }
+
+  const referenceClientX = getDraggedSuitGroupCenterClientX();
+  if (!Number.isFinite(referenceClientX)) {
+    return null;
+  }
+
+  const resolvedCurveSamples = Array.isArray(curveSamples)
+    ? curveSamples
+    : buildSuitDragCurveSamples(layoutEntries, metrics);
+  const sample = getSuitDragCurveSampleAtClientX(resolvedCurveSamples, referenceClientX);
+  if (sample && Number.isFinite(sample.tiltDeg)) {
+    return sample.tiltDeg;
+  }
+
+  return Number.isFinite(cardDragState.dragGroupBaseMeanTiltDeg)
+    ? cardDragState.dragGroupBaseMeanTiltDeg
+    : 0;
+}
+
+function getSuitDragTargetCenterFromLayoutEntries(layoutEntries, metrics, curveSamples = null) {
+  if (!isSuitDragActive() || !Array.isArray(layoutEntries) || !metrics) {
+    return null;
+  }
+
+  const deltaX = cardDragState.lastClientX - cardDragState.startClientX;
+  const deltaY = cardDragState.lastClientY - cardDragState.startClientY;
+  const fallbackCenterX = cardDragState.dragGroupStartCenterTableX + deltaX;
+  const fallbackCenterY = cardDragState.dragGroupStartCenterTableY + deltaY;
+  const referenceClientX = getDraggedSuitGroupCenterClientX();
+  if (!Number.isFinite(referenceClientX)) {
+    return {
+      centerX: fallbackCenterX,
+      centerY: fallbackCenterY
+    };
+  }
+
+  const resolvedCurveSamples = Array.isArray(curveSamples)
+    ? curveSamples
+    : buildSuitDragCurveSamples(layoutEntries, metrics);
+  if (resolvedCurveSamples.length === 0) {
+    return {
+      centerX: fallbackCenterX,
+      centerY: fallbackCenterY
+    };
+  }
+
+  const baseSample = getSuitDragCurveSampleAtClientX(resolvedCurveSamples, referenceClientX);
+
+  return {
+    centerX: Number.isFinite(baseSample?.centerTableX) ? baseSample.centerTableX : fallbackCenterX,
+    centerY: Number.isFinite(baseSample?.centerTableY) ? (baseSample.centerTableY + deltaY) : fallbackCenterY
+  };
+}
+
+function applyCardDragVisual(cardElement) {
+  if (!isCardDragActive() || cardElement.dataset.cardId !== cardDragState.dragCardId) {
+    return;
+  }
+
+  const deltaX = cardDragState.lastClientX - cardDragState.startClientX;
+  const deltaY = cardDragState.lastClientY - cardDragState.startClientY;
+  const nextLeft = cardDragState.dragCardStartLeftPx + deltaX;
+  const nextTop = cardDragState.dragCardStartTopPx + deltaY;
+
+  cardElement.style.transition = "none";
+  cardElement.style.pointerEvents = "none";
+  cardElement.style.left = `${nextLeft}px`;
+  cardElement.style.top = `${nextTop}px`;
+  if (Number.isFinite(cardDragState.dragCardDynamicTiltDeg)) {
+    cardElement.style.transform = `rotate(${cardDragState.dragCardDynamicTiltDeg}deg)`;
+  } else {
+    cardElement.style.transform = cardDragState.dragCardBaseTransform;
+  }
+  cardElement.style.zIndex = `${cardDragState.dragCardZIndex}`;
+}
+
+function applySuitDragVisual(cardElement) {
+  if (!isSuitDragActive()) {
+    return;
+  }
+
+  const cardId = cardElement.dataset.cardId;
+  if (
+    typeof cardId !== "string" ||
+    !Array.isArray(cardDragState.dragCardIds) ||
+    !cardDragState.dragCardIds.includes(cardId)
+  ) {
+    return;
+  }
+
+  const startPosition = cardDragState.dragCardStartPositionsById?.get(cardId);
+  if (!startPosition) {
+    return;
+  }
+
+  const deltaX = cardDragState.lastClientX - cardDragState.startClientX;
+  const deltaY = cardDragState.lastClientY - cardDragState.startClientY;
+  let nextLeft = startPosition.left + deltaX;
+  let nextTop = startPosition.top + deltaY;
+  let cardTiltDeg = null;
+  const dynamicCenterX = cardDragState.dragGroupDynamicCenterTableX;
+  const dynamicCenterY = cardDragState.dragGroupDynamicCenterTableY;
+  const dynamicCenterClientX = cardDragState.dragGroupDynamicCenterClientX;
+  const curveSamples = Array.isArray(cardDragState.dragGroupCurveSamples)
+    ? cardDragState.dragGroupCurveSamples
+    : [];
+  const pointerDeltaY = Number.isFinite(cardDragState.dragGroupPointerDeltaY)
+    ? cardDragState.dragGroupPointerDeltaY
+    : deltaY;
+  const shadowLayout = cardDragState.dragGroupShadowLayoutsById?.get(cardId);
+  const canUseShadowLayout = (
+    cardDragState.dragGroupShadowModelActive === true &&
+    shadowLayout &&
+    Number.isFinite(shadowLayout.left) &&
+    Number.isFinite(shadowLayout.top) &&
+    Number.isFinite(shadowLayout.thetaDeg)
+  );
+  const localOffset = cardDragState.dragGroupLocalOffsetsById?.get(cardId);
+  const dynamicGroupTiltDeg = cardDragState.dragGroupDynamicTiltDeg;
+  const tiltOffsetDeg = cardDragState.dragGroupTiltOffsetsById?.get(cardId);
+  const hasTiltOffset = Number.isFinite(tiltOffsetDeg);
+
+  if (canUseShadowLayout) {
+    nextLeft = shadowLayout.left;
+    nextTop = shadowLayout.top + pointerDeltaY;
+    cardTiltDeg = shadowLayout.thetaDeg;
+  }
+
+  if (
+    !Number.isFinite(cardTiltDeg) &&
+    curveSamples.length > 0 &&
+    Number.isFinite(dynamicCenterClientX) &&
+    localOffset &&
+    Number.isFinite(localOffset.x) &&
+    Number.isFinite(localOffset.y)
+  ) {
+    const cardReferenceClientX = dynamicCenterClientX + localOffset.x;
+    const curveSample = getSuitDragCurveSampleAtClientX(curveSamples, cardReferenceClientX);
+    if (curveSample) {
+      const sampledTiltDeg = curveSample.tiltDeg;
+      const normalOffset = rotatePointClockwise({ x: 0, y: localOffset.y }, degToRad(sampledTiltDeg));
+      const cardWidth = cardElement.offsetWidth || Number.parseFloat(cardElement.dataset.handCardWidthPx ?? "") || 0;
+      const cardHeight = cardElement.offsetHeight || Number.parseFloat(cardElement.dataset.handCardHeightPx ?? "") || 0;
+      const cardCenterX = curveSample.centerTableX + normalOffset.x;
+      const cardCenterY = curveSample.centerTableY + normalOffset.y + pointerDeltaY;
+      nextLeft = cardCenterX - (cardWidth / 2);
+      nextTop = cardCenterY - (cardHeight / 2);
+      cardTiltDeg = sampledTiltDeg + (hasTiltOffset ? tiltOffsetDeg : 0);
+    }
+  }
+
+  if (
+    !Number.isFinite(cardTiltDeg) &&
+    Number.isFinite(dynamicCenterX) &&
+    Number.isFinite(dynamicCenterY) &&
+    localOffset &&
+    Number.isFinite(localOffset.x) &&
+    Number.isFinite(localOffset.y) &&
+    Number.isFinite(dynamicGroupTiltDeg)
+  ) {
+    const worldOffset = rotatePointClockwise(localOffset, degToRad(dynamicGroupTiltDeg));
+    const cardWidth = cardElement.offsetWidth || Number.parseFloat(cardElement.dataset.handCardWidthPx ?? "") || 0;
+    const cardHeight = cardElement.offsetHeight || Number.parseFloat(cardElement.dataset.handCardHeightPx ?? "") || 0;
+    nextLeft = dynamicCenterX + worldOffset.x - (cardWidth / 2);
+    nextTop = dynamicCenterY + worldOffset.y - (cardHeight / 2);
+    cardTiltDeg = dynamicGroupTiltDeg + (hasTiltOffset ? tiltOffsetDeg : 0);
+  }
+
+  cardElement.style.transition = "none";
+  cardElement.style.pointerEvents = "none";
+  cardElement.style.left = `${nextLeft}px`;
+  cardElement.style.top = `${nextTop}px`;
+  if (Number.isFinite(cardTiltDeg)) {
+    cardElement.style.transform = `rotate(${cardTiltDeg}deg)`;
+  } else if (Number.isFinite(dynamicGroupTiltDeg)) {
+    cardElement.style.transform = `rotate(${dynamicGroupTiltDeg + (hasTiltOffset ? tiltOffsetDeg : 0)}deg)`;
+  } else {
+    cardElement.style.transform = cardElement.dataset.handBaseTransform ?? cardElement.style.transform;
+  }
+  cardElement.style.zIndex = `${(Number.parseInt(cardElement.dataset.handBaseZIndex ?? "", 10) || 1) + 250}`;
+}
+
+function getCardDragTargetTiltDegFromLayout(cardElements, cardLayouts) {
+  if (!isCardDragActive() || !Array.isArray(cardElements) || !Array.isArray(cardLayouts)) {
+    return null;
+  }
+
+  const nonDraggedTilts = [];
+
+  for (let index = 0; index < cardElements.length; index += 1) {
+    const cardElement = cardElements[index];
+    const cardLayout = cardLayouts[index];
+
+    if (!cardElement || !cardLayout || cardElement.dataset.cardId === cardDragState.dragCardId) {
+      continue;
+    }
+
+    if (Number.isFinite(cardLayout.thetaDeg)) {
+      nonDraggedTilts.push(cardLayout.thetaDeg);
+    }
+  }
+
+  if (nonDraggedTilts.length === 0) {
+    return 0;
+  }
+
+  const rawInsertionIndex = Number.isInteger(cardDragState.insertionIndex)
+    ? cardDragState.insertionIndex
+    : 0;
+  const insertionIndex = Math.max(0, Math.min(rawInsertionIndex, nonDraggedTilts.length));
+  const leftTilt = insertionIndex > 0 ? nonDraggedTilts[insertionIndex - 1] : null;
+  const rightTilt = insertionIndex < nonDraggedTilts.length ? nonDraggedTilts[insertionIndex] : null;
+  const hasLeftTilt = Number.isFinite(leftTilt);
+  const hasRightTilt = Number.isFinite(rightTilt);
+
+  if (hasLeftTilt && hasRightTilt) {
+    return (leftTilt + rightTilt) / 2;
+  }
+
+  if (hasLeftTilt) {
+    return leftTilt;
+  }
+
+  if (hasRightTilt) {
+    return rightTilt;
+  }
+
+  return 0;
+}
+
+function arraysShallowEqual(left, right) {
+  if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+    return false;
+  }
+
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function maybeActivateCardDrag() {
+  if (
+    cardDragState === null ||
+    cardDragState.mode !== "card" ||
+    cardDragState.active ||
+    !isCardDragEnabled()
+  ) {
+    return false;
+  }
+
+  const deltaX = cardDragState.lastClientX - cardDragState.startClientX;
+  const deltaY = cardDragState.lastClientY - cardDragState.startClientY;
+  const travelDistance = Math.hypot(deltaX, deltaY);
+
+  if (travelDistance < CARD_DRAG_START_THRESHOLD_PX) {
+    return false;
+  }
+
+  const orderedCardElements = Array.from(cardTable.querySelectorAll(".card"));
+  const cardOrder = orderedCardElements
+    .map((cardElement) => cardElement.dataset.cardId)
+    .filter((cardId) => typeof cardId === "string" && cardId.length > 0);
+  const initialInsertionIndex = cardOrder.indexOf(cardDragState.dragCardId);
+
+  if (cardOrder.length !== currentCards.length || initialInsertionIndex < 0) {
+    resetCardDragState();
+    return false;
+  }
+
+  cardDragState.active = true;
+  cardDragState.startOrderCardIds = cardOrder;
+  cardDragState.previewOrderCardIds = [...cardOrder];
+  cardDragState.insertionIndex = initialInsertionIndex;
+  cardDragState.dragCardStartLeftPx = Number.parseFloat(cardDragState.dragCardElement.style.left) || 0;
+  cardDragState.dragCardStartTopPx = Number.parseFloat(cardDragState.dragCardElement.style.top) || 0;
+  const dragCardRect = cardDragState.dragCardElement.getBoundingClientRect();
+  cardDragState.dragCardWidthPx = dragCardRect.width || 0;
+  cardDragState.dragCardStartClientCenterX = dragCardRect.left + (dragCardRect.width / 2);
+  const totalDeltaX = cardDragState.lastClientX - cardDragState.startClientX;
+  if (Math.abs(totalDeltaX) >= CARD_DRAG_DIRECTION_DEADZONE_PX) {
+    cardDragState.horizontalDirection = totalDeltaX > 0 ? 1 : -1;
+  }
+
+  cardDragState.dragCardBaseTransform =
+    cardDragState.dragCardElement.dataset.handBaseTransform ??
+    cardDragState.dragCardElement.style.transform ??
+    "";
+  cardDragState.dragCardZIndex = cardOrder.length + 200;
+  cardTable.classList.add("card-table--dragging");
+  clearHandHoverState();
+  layoutHandCards(currentCards.length);
+  updateDebugOverlays();
+  return true;
+}
+
+function getCardDragInsertionIndex(pointerClientX) {
+  if (!isCardDragActive()) {
+    return null;
+  }
+
+  const draggedCenterX =
+    cardDragState.dragCardStartClientCenterX +
+    (cardDragState.lastClientX - cardDragState.startClientX);
+  const referenceX = Number.isFinite(draggedCenterX) ? draggedCenterX : pointerClientX;
+
+  const orderedNonDraggedCards = getCardElementsInCurrentLayoutOrder()
+    .filter((cardElement) => cardElement.dataset.cardId !== cardDragState.dragCardId);
+
+  if (orderedNonDraggedCards.length === 0) {
+    return 0;
+  }
+
+  const cardCenters = orderedNonDraggedCards.map((cardElement) => {
+    const rect = cardElement.getBoundingClientRect();
+    return rect.left + (rect.width / 2);
+  });
+  const descending = cardCenters.length > 1 && cardCenters[0] > cardCenters[cardCenters.length - 1];
+  let targetUnderPointer = document.elementFromPoint(referenceX, cardDragState.lastClientY);
+  if (!targetUnderPointer && Number.isFinite(pointerClientX)) {
+    targetUnderPointer = document.elementFromPoint(pointerClientX, cardDragState.lastClientY);
+  }
+  const hoveredCardElement = getHandCardElementFromTarget(targetUnderPointer);
+  const hoveredCardId = hoveredCardElement?.dataset?.cardId ?? null;
+  const hoveredIndex = orderedNonDraggedCards.findIndex(
+    (cardElement) => cardElement.dataset.cardId === hoveredCardId
+  );
+
+  if (hoveredIndex >= 0) {
+    const hoveredRect = hoveredCardElement.getBoundingClientRect();
+    const hoveredCenterX = hoveredRect.left + (hoveredRect.width / 2);
+    const gapOnLeftSide = referenceX < hoveredCenterX;
+    if (descending) {
+      return gapOnLeftSide
+        ? Math.min(orderedNonDraggedCards.length, hoveredIndex + 1)
+        : hoveredIndex;
+    }
+
+    return gapOnLeftSide
+      ? hoveredIndex
+      : Math.min(orderedNonDraggedCards.length, hoveredIndex + 1);
+  }
+
+  const leftEdge = Math.min(...cardCenters);
+  const rightEdge = Math.max(...cardCenters);
+  if (referenceX <= leftEdge) {
+    return descending ? orderedNonDraggedCards.length : 0;
+  }
+
+  if (referenceX >= rightEdge) {
+    return descending ? 0 : orderedNonDraggedCards.length;
+  }
+
+  return Number.isInteger(cardDragState.insertionIndex)
+    ? cardDragState.insertionIndex
+    : 0;
+}
+
+function updateCardDragPreviewOrder(insertionIndex) {
+  if (!isCardDragActive() || !Array.isArray(cardDragState.previewOrderCardIds)) {
+    return false;
+  }
+
+  const cardOrderWithoutDragged = cardDragState.previewOrderCardIds.filter(
+    (cardId) => cardId !== cardDragState.dragCardId
+  );
+  const clampedInsertionIndex = Math.max(
+    0,
+    Math.min(insertionIndex, cardOrderWithoutDragged.length)
+  );
+  const nextPreviewOrder = [...cardOrderWithoutDragged];
+  nextPreviewOrder.splice(clampedInsertionIndex, 0, cardDragState.dragCardId);
+
+  if (arraysShallowEqual(nextPreviewOrder, cardDragState.previewOrderCardIds)) {
+    return false;
+  }
+
+  cardDragState.previewOrderCardIds = nextPreviewOrder;
+  cardDragState.insertionIndex = clampedInsertionIndex;
+  return true;
+}
+
+function beginPendingCardDrag(event) {
+  if (event.button !== 0 || !isCardDragEnabled()) {
+    return false;
+  }
+
+  const cardElement = getHandCardElementFromTarget(event.target);
+  const cardId = cardElement?.dataset?.cardId ?? "";
+
+  if (!cardElement || typeof cardId !== "string" || cardId.length === 0) {
+    return false;
+  }
+
+  event.preventDefault();
+  resetCardDragState();
+  cardDragState = {
+    mode: "card",
+    active: false,
+    pointerId: event.pointerId,
+    dragCardId: cardId,
+    dragCardElement: cardElement,
+    startClientX: event.clientX,
+    startClientY: event.clientY,
+    lastClientX: event.clientX,
+    lastClientY: event.clientY,
+    startOrderCardIds: null,
+    previewOrderCardIds: null,
+    insertionIndex: null,
+    dragCardStartLeftPx: 0,
+    dragCardStartTopPx: 0,
+    dragCardWidthPx: 0,
+    dragCardStartClientCenterX: 0,
+    horizontalDirection: 0,
+    dragCardBaseTransform: "",
+    dragCardDynamicTiltDeg: null,
+    dragCardZIndex: 0
+  };
+
+  if (typeof cardElement.setPointerCapture === "function") {
+    cardElement.setPointerCapture(event.pointerId);
+  }
+
+  return true;
+}
+
+function handleCardDragPointerMove(event) {
+  if (!isCardDragTrackedPointer(event)) {
+    return false;
+  }
+
+  const moveDeltaX = event.clientX - cardDragState.lastClientX;
+  if (Math.abs(moveDeltaX) >= CARD_DRAG_DIRECTION_DEADZONE_PX) {
+    cardDragState.horizontalDirection = moveDeltaX > 0 ? 1 : -1;
+  }
+
+  cardDragState.lastClientX = event.clientX;
+  cardDragState.lastClientY = event.clientY;
+
+  if (!cardDragState.active) {
+    maybeActivateCardDrag();
+  }
+
+  if (!cardDragState.active) {
+    return true;
+  }
+
+  const insertionIndex = getCardDragInsertionIndex(event.clientX);
+  if (Number.isInteger(insertionIndex)) {
+    updateCardDragPreviewOrder(insertionIndex);
+  }
+
+  layoutHandCards(currentCards.length);
+  updateDebugOverlays();
+  event.preventDefault();
+  return true;
+}
+
+function commitCardDragOrder() {
+  if (!isCardDragActive() || !Array.isArray(cardDragState.previewOrderCardIds)) {
+    resetCardDragState();
+    return false;
+  }
+
+  const nextManualOrder = [...cardDragState.previewOrderCardIds];
+  const startOrder = Array.isArray(cardDragState.startOrderCardIds)
+    ? [...cardDragState.startOrderCardIds]
+    : [];
+  const currentCardIds = getCardsInDealOrder(currentCards).map((card) => card.cardId);
+  const orderChanged = startOrder.length > 0 && !arraysShallowEqual(nextManualOrder, startOrder);
+  const wasRankSortEnabled = isRankSortEnabled();
+
+  resetCardDragState();
+
+  if (!areCardIdSetsEqual(nextManualOrder, currentCardIds)) {
+    return false;
+  }
+
+  manualCardOrder = nextManualOrder;
+
+  if (orderChanged && wasRankSortEnabled && rankSortEnabledToggle) {
+    rankSortEnabledToggle.checked = false;
+    enforceHandSortControlCoercion();
+    updateHandModeControls();
+  }
+
+  return true;
+}
+
+function handleCardDragPointerEnd(event, { commit }) {
+  if (!isCardDragTrackedPointer(event)) {
+    return false;
+  }
+
+  if (commit && commitCardDragOrder()) {
+    renderCards(currentCards);
+    return true;
+  }
+
+  resetCardDragState();
+
+  if (currentCards.length > 0 && getViewMode() === "hand") {
+    refreshHandLayoutFromControls();
+  }
+
+  return true;
+}
+
+function getCurrentGroupOrderFromCards(cards) {
+  const cardsInDealOrder = getCardsInDealOrder(cards);
+  const groupOrder = [];
+  const seenGroupKeys = new Set();
+
+  cardsInDealOrder.forEach((card) => {
+    const groupKey = getCardGroupKey(card);
+    if (!isSupportedManualGroupKey(groupKey) || seenGroupKeys.has(groupKey)) {
+      return;
+    }
+
+    seenGroupKeys.add(groupKey);
+    groupOrder.push(groupKey);
+  });
+
+  return groupOrder;
+}
+
+function buildCardIdsByGroup(cardOrder, cardIdToGroupKey) {
+  const cardIdsByGroup = new Map();
+  const trailingCardIds = [];
+
+  cardOrder.forEach((cardId) => {
+    const groupKey = cardIdToGroupKey.get(cardId);
+    if (!isSupportedManualGroupKey(groupKey)) {
+      trailingCardIds.push(cardId);
+      return;
+    }
+
+    if (!cardIdsByGroup.has(groupKey)) {
+      cardIdsByGroup.set(groupKey, []);
+    }
+    cardIdsByGroup.get(groupKey).push(cardId);
+  });
+
+  return {
+    cardIdsByGroup,
+    trailingCardIds
+  };
+}
+
+function buildPreviewCardOrderFromGroups(groupOrder, cardIdsByGroup, trailingCardIds = []) {
+  const previewCardIds = [];
+
+  groupOrder.forEach((groupKey) => {
+    const groupCardIds = cardIdsByGroup.get(groupKey) ?? [];
+    groupCardIds.forEach((cardId) => {
+      previewCardIds.push(cardId);
+    });
+  });
+
+  trailingCardIds.forEach((cardId) => {
+    previewCardIds.push(cardId);
+  });
+
+  return previewCardIds;
+}
+
+function isSuitDragGroupKey(groupKey) {
+  return isSupportedManualGroupKey(groupKey);
+}
+
+function maybeActivateSuitDrag() {
+  if (
+    cardDragState === null ||
+    cardDragState.mode !== "suit" ||
+    cardDragState.active ||
+    !isSuitDragEnabled()
+  ) {
+    return false;
+  }
+
+  const deltaX = cardDragState.lastClientX - cardDragState.startClientX;
+  const deltaY = cardDragState.lastClientY - cardDragState.startClientY;
+  const travelDistance = Math.hypot(deltaX, deltaY);
+
+  if (travelDistance < CARD_DRAG_START_THRESHOLD_PX) {
+    return false;
+  }
+
+  const orderedCardElements = Array.from(cardTable.querySelectorAll(".card"));
+  const cardOrder = orderedCardElements
+    .map((cardElement) => cardElement.dataset.cardId)
+    .filter((cardId) => typeof cardId === "string" && cardId.length > 0);
+  const cardIdToGroupKey = new Map();
+  const startPositionsById = new Map();
+  const baseTiltById = new Map();
+  const centerById = new Map();
+  let minLeft = Number.POSITIVE_INFINITY;
+  let maxRight = Number.NEGATIVE_INFINITY;
+  let tiltSumDeg = 0;
+  let tiltCount = 0;
+  let centerSumX = 0;
+  let centerSumY = 0;
+  let centerCount = 0;
+  const dragCardIds = [];
+
+  orderedCardElements.forEach((cardElement) => {
+    const cardId = cardElement.dataset.cardId;
+    if (typeof cardId !== "string" || cardId.length === 0) {
+      return;
+    }
+
+    const groupKey = getCardElementGroupKey(cardElement);
+    cardIdToGroupKey.set(cardId, groupKey);
+
+    if (groupKey !== cardDragState.dragGroupKey) {
+      return;
+    }
+
+    dragCardIds.push(cardId);
+    const startLeft = Number.parseFloat(cardElement.style.left) || 0;
+    const startTop = Number.parseFloat(cardElement.style.top) || 0;
+    startPositionsById.set(cardId, {
+      left: startLeft,
+      top: startTop
+    });
+    const rect = cardElement.getBoundingClientRect();
+    minLeft = Math.min(minLeft, rect.left);
+    maxRight = Math.max(maxRight, rect.right);
+    const centerX = startLeft + (cardElement.offsetWidth / 2);
+    const centerY = startTop + (cardElement.offsetHeight / 2);
+    if (Number.isFinite(centerX) && Number.isFinite(centerY)) {
+      centerById.set(cardId, { x: centerX, y: centerY });
+      centerSumX += centerX;
+      centerSumY += centerY;
+      centerCount += 1;
+    }
+    const baseTiltDeg = Number.parseFloat(cardElement.dataset.handThetaDeg ?? "");
+    if (Number.isFinite(baseTiltDeg)) {
+      baseTiltById.set(cardId, baseTiltDeg);
+      tiltSumDeg += baseTiltDeg;
+      tiltCount += 1;
+    }
+  });
+
+  const groupOrder = [];
+  const seenGroupKeys = new Set();
+  cardOrder.forEach((cardId) => {
+    const groupKey = cardIdToGroupKey.get(cardId);
+    if (!isSuitDragGroupKey(groupKey) || seenGroupKeys.has(groupKey)) {
+      return;
+    }
+
+    seenGroupKeys.add(groupKey);
+    groupOrder.push(groupKey);
+  });
+
+  const draggedGroupIndex = groupOrder.indexOf(cardDragState.dragGroupKey);
+  if (dragCardIds.length === 0 || draggedGroupIndex < 0) {
+    resetCardDragState();
+    return false;
+  }
+
+  const { cardIdsByGroup, trailingCardIds } = buildCardIdsByGroup(cardOrder, cardIdToGroupKey);
+  const dragGroupBaseMeanTiltDeg = tiltCount > 0 ? (tiltSumDeg / tiltCount) : 0;
+  const dragGroupTiltOffsetsById = new Map();
+  const dragGroupStartCenterTableX = centerCount > 0 ? (centerSumX / centerCount) : 0;
+  const dragGroupStartCenterTableY = centerCount > 0 ? (centerSumY / centerCount) : 0;
+  const dragGroupLocalOffsetsById = new Map();
+  const dragGroupBaseMeanTiltRad = degToRad(dragGroupBaseMeanTiltDeg);
+  dragCardIds.forEach((cardId) => {
+    const cardTiltDeg = baseTiltById.get(cardId);
+    dragGroupTiltOffsetsById.set(
+      cardId,
+      Number.isFinite(cardTiltDeg) ? cardTiltDeg - dragGroupBaseMeanTiltDeg : 0
+    );
+    const cardCenter = centerById.get(cardId);
+    if (cardCenter) {
+      const centeredOffset = {
+        x: cardCenter.x - dragGroupStartCenterTableX,
+        y: cardCenter.y - dragGroupStartCenterTableY
+      };
+      dragGroupLocalOffsetsById.set(
+        cardId,
+        rotatePointClockwise(centeredOffset, -dragGroupBaseMeanTiltRad)
+      );
+    } else {
+      dragGroupLocalOffsetsById.set(cardId, { x: 0, y: 0 });
+    }
+  });
+
+  cardDragState.active = true;
+  cardDragState.startOrderCardIds = cardOrder;
+  cardDragState.previewOrderGroupKeys = [...groupOrder];
+  cardDragState.previewOrderCardIds = buildPreviewCardOrderFromGroups(
+    cardDragState.previewOrderGroupKeys,
+    cardIdsByGroup,
+    trailingCardIds
+  );
+  cardDragState.insertionIndex = draggedGroupIndex;
+  cardDragState.dragCardIds = dragCardIds;
+  cardDragState.dragCardStartPositionsById = startPositionsById;
+  cardDragState.cardIdsByGroup = cardIdsByGroup;
+  cardDragState.trailingCardIds = trailingCardIds;
+  cardDragState.dragGroupBaseMeanTiltDeg = dragGroupBaseMeanTiltDeg;
+  cardDragState.dragGroupTiltOffsetsById = dragGroupTiltOffsetsById;
+  cardDragState.dragGroupLocalOffsetsById = dragGroupLocalOffsetsById;
+  cardDragState.dragGroupCurveSamples = [];
+  cardDragState.dragGroupShadowLayoutsById = null;
+  cardDragState.dragGroupShadowModelActive = false;
+  cardDragState.dragGroupDynamicTiltDeg = dragGroupBaseMeanTiltDeg;
+  cardDragState.dragGroupStartCenterTableX = dragGroupStartCenterTableX;
+  cardDragState.dragGroupStartCenterTableY = dragGroupStartCenterTableY;
+  cardDragState.dragGroupDynamicCenterTableX = dragGroupStartCenterTableX;
+  cardDragState.dragGroupDynamicCenterTableY = dragGroupStartCenterTableY;
+  cardDragState.dragGroupDynamicCenterClientX = cardDragState.startClientX;
+  cardDragState.dragGroupPointerDeltaY = 0;
+  cardDragState.dragGroupStartClientCenterX = Number.isFinite(minLeft) && Number.isFinite(maxRight)
+    ? ((minLeft + maxRight) / 2)
+    : cardDragState.startClientX;
+  cardTable.classList.add("card-table--dragging");
+  clearHandHoverState();
+  layoutHandCards(currentCards.length);
+  updateDebugOverlays();
+  return true;
+}
+
+function getSuitDragInsertionIndex(pointerClientX) {
+  if (!isSuitDragActive()) {
+    return null;
+  }
+
+  const draggedCenterX = getDraggedSuitGroupCenterClientX();
+  const referenceX = Number.isFinite(draggedCenterX) ? draggedCenterX : pointerClientX;
+  const orderedNonDraggedCards = getCardElementsInCurrentLayoutOrder()
+    .filter((cardElement) => getCardElementGroupKey(cardElement) !== cardDragState.dragGroupKey);
+
+  if (orderedNonDraggedCards.length === 0) {
+    return 0;
+  }
+
+  const nonDraggedGroupKeys = [];
+  const groupBoundsByKey = new Map();
+  orderedNonDraggedCards.forEach((cardElement) => {
+    const groupKey = getCardElementGroupKey(cardElement);
+    if (!isSuitDragGroupKey(groupKey)) {
+      return;
+    }
+
+    if (!nonDraggedGroupKeys.includes(groupKey)) {
+      nonDraggedGroupKeys.push(groupKey);
+    }
+
+    const rect = cardElement.getBoundingClientRect();
+    const priorBounds = groupBoundsByKey.get(groupKey);
+    if (!priorBounds) {
+      groupBoundsByKey.set(groupKey, {
+        left: rect.left,
+        right: rect.right
+      });
+      return;
+    }
+
+    priorBounds.left = Math.min(priorBounds.left, rect.left);
+    priorBounds.right = Math.max(priorBounds.right, rect.right);
+  });
+
+  if (nonDraggedGroupKeys.length === 0) {
+    return 0;
+  }
+
+  const groupCenters = nonDraggedGroupKeys.map((groupKey) => {
+    const bounds = groupBoundsByKey.get(groupKey);
+    return bounds ? (bounds.left + bounds.right) / 2 : 0;
+  });
+  const descending = groupCenters.length > 1 && groupCenters[0] > groupCenters[groupCenters.length - 1];
+  let targetUnderPointer = document.elementFromPoint(referenceX, cardDragState.lastClientY);
+  if (!targetUnderPointer && Number.isFinite(pointerClientX)) {
+    targetUnderPointer = document.elementFromPoint(pointerClientX, cardDragState.lastClientY);
+  }
+
+  const hoveredCardElement = getHandCardElementFromTarget(targetUnderPointer);
+  const hoveredGroupKey = getCardElementGroupKey(hoveredCardElement);
+  const hoveredGroupIndex = nonDraggedGroupKeys.indexOf(hoveredGroupKey);
+
+  if (hoveredGroupIndex >= 0) {
+    const hoveredCenterX = groupCenters[hoveredGroupIndex];
+    const gapOnLeftSide = referenceX < hoveredCenterX;
+    if (descending) {
+      return gapOnLeftSide
+        ? Math.min(nonDraggedGroupKeys.length, hoveredGroupIndex + 1)
+        : hoveredGroupIndex;
+    }
+
+    return gapOnLeftSide
+      ? hoveredGroupIndex
+      : Math.min(nonDraggedGroupKeys.length, hoveredGroupIndex + 1);
+  }
+
+  const leftEdge = Math.min(...groupCenters);
+  const rightEdge = Math.max(...groupCenters);
+  if (referenceX <= leftEdge) {
+    return descending ? nonDraggedGroupKeys.length : 0;
+  }
+
+  if (referenceX >= rightEdge) {
+    return descending ? 0 : nonDraggedGroupKeys.length;
+  }
+
+  return Number.isInteger(cardDragState.insertionIndex)
+    ? cardDragState.insertionIndex
+    : 0;
+}
+
+function updateSuitDragPreviewOrder(insertionIndex) {
+  if (!isSuitDragActive() || !Array.isArray(cardDragState.previewOrderGroupKeys)) {
+    return false;
+  }
+
+  const groupOrderWithoutDragged = cardDragState.previewOrderGroupKeys.filter(
+    (groupKey) => groupKey !== cardDragState.dragGroupKey
+  );
+  const clampedInsertionIndex = Math.max(
+    0,
+    Math.min(insertionIndex, groupOrderWithoutDragged.length)
+  );
+  const nextGroupOrder = [...groupOrderWithoutDragged];
+  nextGroupOrder.splice(clampedInsertionIndex, 0, cardDragState.dragGroupKey);
+
+  if (arraysShallowEqual(nextGroupOrder, cardDragState.previewOrderGroupKeys)) {
+    return false;
+  }
+
+  cardDragState.previewOrderGroupKeys = nextGroupOrder;
+  cardDragState.previewOrderCardIds = buildPreviewCardOrderFromGroups(
+    nextGroupOrder,
+    cardDragState.cardIdsByGroup ?? new Map(),
+    cardDragState.trailingCardIds ?? []
+  );
+  cardDragState.insertionIndex = clampedInsertionIndex;
+  return true;
+}
+
+function beginPendingSuitDrag(event) {
+  if (event.button !== 0 || !isSuitDragEnabled() || !isHoverModifierActive(event)) {
+    return false;
+  }
+
+  const cardElement = getHandCardElementFromTarget(event.target);
+  const groupKey = getCardElementGroupKey(cardElement);
+  const cardId = cardElement?.dataset?.cardId ?? "";
+
+  if (!cardElement || !isSuitDragGroupKey(groupKey) || typeof cardId !== "string" || cardId.length === 0) {
+    return false;
+  }
+
+  event.preventDefault();
+  resetCardDragState();
+  cardDragState = {
+    mode: "suit",
+    active: false,
+    pointerId: event.pointerId,
+    dragGroupKey: groupKey,
+    dragCardId: cardId,
+    dragCardElement: cardElement,
+    startClientX: event.clientX,
+    startClientY: event.clientY,
+    lastClientX: event.clientX,
+    lastClientY: event.clientY,
+    startOrderCardIds: null,
+    previewOrderCardIds: null,
+    previewOrderGroupKeys: null,
+    insertionIndex: null,
+    dragCardIds: [],
+    dragCardStartPositionsById: null,
+    cardIdsByGroup: null,
+    trailingCardIds: [],
+    dragGroupBaseMeanTiltDeg: 0,
+    dragGroupTiltOffsetsById: null,
+    dragGroupLocalOffsetsById: null,
+    dragGroupCurveSamples: null,
+    dragGroupShadowLayoutsById: null,
+    dragGroupShadowModelActive: false,
+    dragGroupDynamicTiltDeg: null,
+    dragGroupStartCenterTableX: 0,
+    dragGroupStartCenterTableY: 0,
+    dragGroupDynamicCenterTableX: null,
+    dragGroupDynamicCenterTableY: null,
+    dragGroupDynamicCenterClientX: null,
+    dragGroupPointerDeltaY: 0,
+    dragGroupStartClientCenterX: 0,
+    dragCardStartLeftPx: 0,
+    dragCardStartTopPx: 0,
+    dragCardWidthPx: 0,
+    dragCardStartClientCenterX: 0,
+    horizontalDirection: 0,
+    dragCardBaseTransform: "",
+    dragCardDynamicTiltDeg: null,
+    dragCardZIndex: 0
+  };
+
+  if (typeof cardElement.setPointerCapture === "function") {
+    cardElement.setPointerCapture(event.pointerId);
+  }
+
+  return true;
+}
+
+function handleSuitDragPointerMove(event) {
+  if (!isSuitDragTrackedPointer(event)) {
+    return false;
+  }
+
+  cardDragState.lastClientX = event.clientX;
+  cardDragState.lastClientY = event.clientY;
+
+  if (!cardDragState.active) {
+    maybeActivateSuitDrag();
+  }
+
+  if (!cardDragState.active) {
+    return true;
+  }
+
+  const insertionIndex = getSuitDragInsertionIndex(event.clientX);
+  if (Number.isInteger(insertionIndex)) {
+    updateSuitDragPreviewOrder(insertionIndex);
+  }
+
+  layoutHandCards(currentCards.length);
+  updateDebugOverlays();
+  event.preventDefault();
+  return true;
+}
+
+function commitSuitDragOrder() {
+  if (!isSuitDragActive() || !Array.isArray(cardDragState.previewOrderGroupKeys)) {
+    resetCardDragState();
+    return false;
+  }
+
+  const nextManualOrder = [...cardDragState.previewOrderGroupKeys];
+  const currentGroupOrder = getCurrentGroupOrderFromCards(currentCards);
+  const shouldSwitchToManual = getHandSuitSortMode() === "auto";
+  resetCardDragState();
+
+  if (!areGroupKeySetsEqual(nextManualOrder, currentGroupOrder)) {
+    return false;
+  }
+
+  manualSuitOrder = nextManualOrder;
+
+  if (shouldSwitchToManual && handSuitSortModeSelect) {
+    handSuitSortModeSelect.value = "manual";
+    enforceHandSortControlCoercion();
+    updateHandModeControls();
+  }
+
+  return true;
+}
+
+function handleSuitDragPointerEnd(event, { commit }) {
+  if (!isSuitDragTrackedPointer(event)) {
+    return false;
+  }
+
+  if (commit && commitSuitDragOrder()) {
+    renderCards(currentCards);
+    return true;
+  }
+
+  resetCardDragState();
+
+  if (currentCards.length > 0 && getViewMode() === "hand") {
+    refreshHandLayoutFromControls();
+  }
+
+  return true;
+}
+
+function isHoverModifierActive(event) {
+  return Boolean(event && (event.shiftKey || event.ctrlKey || event.altKey));
+}
+
+function isHoverModifierKey(event) {
+  return event.key === "Shift" || event.key === "Control" || event.key === "Alt";
+}
+
+function isSupportedHoverMode(mode) {
+  return mode === "none" || mode === "card" || mode === "suit";
+}
+
+function isStandardSuit(suit) {
+  return typeof suit === "string" && STANDARD_SUIT_SET.has(suit);
+}
+
+function getHandCardElementFromTarget(target) {
+  if (!(target instanceof Element)) {
+    return null;
+  }
+
+  const cardElement = target.closest(".card");
+  if (!(cardElement instanceof HTMLElement) || !cardTable.contains(cardElement)) {
+    return null;
+  }
+
+  return cardElement;
+}
+
+function isCardInActiveHoverSelection(cardElement) {
+  if (!(cardElement instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (handHoverMode === "card") {
+    return hoveredCardId !== null && cardElement.dataset.cardId === hoveredCardId;
+  }
+
+  if (handHoverMode === "suit") {
+    return hoveredGroupKey !== null && getCardElementGroupKey(cardElement) === hoveredGroupKey;
+  }
+
+  return false;
+}
+
+function applyCardHandTransform(cardElement, baseTransform, baseZIndex) {
+  if (typeof baseTransform !== "string" || baseTransform.length === 0) {
+    return;
+  }
+
+  const shouldEject = isCardInActiveHoverSelection(cardElement);
+  const cardHeightPx = Number.parseFloat(cardElement.dataset.handCardHeightPx ?? "");
+  const safeCardHeightPx = Number.isFinite(cardHeightPx) && cardHeightPx > 0
+    ? cardHeightPx
+    : getCardSizePx();
+  const hoverEjectPx = safeCardHeightPx * HAND_HOVER_EJECT_RATIO;
+  const hoverTranslate = shouldEject ? ` translateY(-${hoverEjectPx.toFixed(2)}px)` : "";
+  const nextZIndex = baseZIndex;
+
+  cardElement.style.transform = `${baseTransform}${hoverTranslate}`;
+  cardElement.style.zIndex = `${nextZIndex}`;
+}
+
+function applyCurrentHandHoverState() {
+  if (isAnyDragActive()) {
+    return;
+  }
+
+  if (getViewMode() !== "hand") {
+    return;
+  }
+
+  cardTable.querySelectorAll(".card").forEach((cardElement) => {
+    const baseTransform = cardElement.dataset.handBaseTransform ?? "";
+    const baseZIndex = Number.parseInt(cardElement.dataset.handBaseZIndex ?? "", 10);
+    const safeBaseZIndex = Number.isInteger(baseZIndex)
+      ? baseZIndex
+      : Number.parseInt(cardElement.style.zIndex, 10) || 1;
+
+    applyCardHandTransform(cardElement, baseTransform, safeBaseZIndex);
+  });
+}
+
+function setHandHoverState(mode, cardId = null, suit = null) {
+  const normalizedMode = isSupportedHoverMode(mode) ? mode : "none";
+  const nextCardId = normalizedMode === "card" && typeof cardId === "string" && cardId.length > 0
+    ? cardId
+    : null;
+  const nextGroup = normalizedMode === "suit" && isSuitDragGroupKey(suit)
+    ? suit
+    : null;
+
+  if (handHoverMode === normalizedMode && hoveredCardId === nextCardId && hoveredGroupKey === nextGroup) {
+    return;
+  }
+
+  handHoverMode = normalizedMode;
+  hoveredCardId = nextCardId;
+  hoveredGroupKey = nextGroup;
+  applyCurrentHandHoverState();
+}
+
+function clearHandHoverState() {
+  setHandHoverState("none");
+}
+
+function setHandHoverFromCardElement(cardElement, modifierActive) {
+  if (isAnyDragActive()) {
+    clearHandHoverState();
+    return;
+  }
+
+  if (getViewMode() !== "hand" || currentCards.length === 0 || !cardElement) {
+    clearHandHoverState();
+    return;
+  }
+
+  if (isRankSortEnabled() && modifierActive) {
+    const groupKey = getCardElementGroupKey(cardElement);
+    if (isSuitDragGroupKey(groupKey)) {
+      setHandHoverState("suit", null, groupKey);
+      return;
+    }
+  }
+
+  const cardId = cardElement.dataset.cardId;
+  if (typeof cardId === "string" && cardId.length > 0) {
+    setHandHoverState("card", cardId, null);
+    return;
+  }
+
+  clearHandHoverState();
+}
+
+function refreshHandHoverFromPointerEvent(event) {
+  const cardElement = getHandCardElementFromTarget(event.target);
+  setHandHoverFromCardElement(cardElement, isHoverModifierActive(event));
+}
+
+function refreshHandHoverFromKeyEvent(event) {
+  if (getViewMode() !== "hand") {
+    clearHandHoverState();
+    return;
+  }
+
+  const hoveredCardElement = cardTable.querySelector(".card:hover");
+  setHandHoverFromCardElement(
+    hoveredCardElement instanceof HTMLElement ? hoveredCardElement : null,
+    isHoverModifierActive(event)
+  );
+}
+
 function isHandDepthShadowEnabled() {
-  return handDepthShadowToggle
-    ? handDepthShadowToggle.checked
-    : DEFAULT_HAND_DEPTH_SHADOW_ENABLED;
+  return false;
+}
+
+function getHandDepthShadowStrengthPct() {
+  return Math.round(
+    getClampedSliderValue(
+      handDepthShadowStrengthSlider,
+      DEFAULT_HAND_DEPTH_SHADOW_STRENGTH_PCT,
+      MIN_HAND_DEPTH_SHADOW_STRENGTH_PCT,
+      MAX_HAND_DEPTH_SHADOW_STRENGTH_PCT
+    )
+  );
+}
+
+function getHandDepthShadowStrengthFactor() {
+  return getHandDepthShadowStrengthPct() / 100;
 }
 
 function getClampedSliderValue(input, fallbackValue, minValue, maxValue) {
@@ -728,7 +3380,7 @@ function getCardSizePx() {
   return Math.round(
     getClampedSliderValue(
       cardSizeSlider,
-      IDEAL_CARD_HEIGHT_PX,
+      DEFAULT_CARD_HEIGHT_PX,
       MIN_CARD_HEIGHT_PX,
       MAX_CARD_HEIGHT_PX
     )
@@ -831,6 +3483,10 @@ function updateHandGeometryValueLabels() {
   if (demoOuterDropSliderValue) {
     demoOuterDropSliderValue.textContent = `${getDemoOuterDropPct().toFixed(1)}%`;
   }
+  if (handDepthShadowStrengthSliderValue) {
+    handDepthShadowStrengthSliderValue.textContent = `${getHandDepthShadowStrengthPct()}%`;
+  }
+  syncHandDepthShadowDirectionClock();
 }
 
 function parseUrlFloatParam(name) {
@@ -895,6 +3551,7 @@ function updateHandModeControls() {
   const handLayoutMode = getHandLayoutMode();
 
   syncAlphaSliderForMode();
+  enforceHandSortControlCoercion();
 
   handLayoutControls.forEach((control) => {
     control.classList.toggle("mode-toggle--hidden", !isHandView);
@@ -934,16 +3591,36 @@ function updateHandModeControls() {
     demoOuterDropSlider.disabled = !isHandView || handLayoutMode !== "demo";
   }
 
-  if (handSortEnabledToggle) {
-    handSortEnabledToggle.disabled = !isHandView || HAND_SORTING_API === null;
+  if (rankSortEnabledToggle) {
+    rankSortEnabledToggle.disabled = !isHandView || HAND_SORTING_API === null;
+  }
+
+  handDirectionInputs.forEach((input) => {
+    input.disabled = !isHandView;
+  });
+
+  if (handSuitSortModeSelect) {
+    handSuitSortModeSelect.disabled = !isHandView || HAND_SORTING_API === null || !isRankSortEnabled();
   }
 
   if (handRankPolicySelect) {
-    handRankPolicySelect.disabled = !isHandView || HAND_SORTING_API === null || !isHandSortEnabled();
+    handRankPolicySelect.disabled = !isHandView || HAND_SORTING_API === null || !isRankSortEnabled();
   }
 
   if (handDepthShadowToggle) {
     handDepthShadowToggle.disabled = !isHandView;
+  }
+
+  if (handDepthShadowStrengthSlider) {
+    handDepthShadowStrengthSlider.disabled = !isHandView || !isHandDepthShadowEnabled();
+  }
+
+  if (handDepthShadowDirectionClock) {
+    handDepthShadowDirectionClock
+      .querySelectorAll(".shadow-clock__hour")
+      .forEach((button) => {
+        button.disabled = !isHandView || !isHandDepthShadowEnabled();
+      });
   }
 
   updateHandGeometryValueLabels();
@@ -963,6 +3640,7 @@ function applyTableLayout(viewMode) {
   cardTable.style.removeProperty("min-width");
 
   if (viewMode !== "hand") {
+    clearHandHoverState();
     cardTable.classList.add("card-table--matrix");
     applyHandDepthShadowState(viewMode);
     return;
@@ -1240,6 +3918,17 @@ function buildDemoHandLayouts({
   };
 }
 
+function applyHandDirectionToCardLayouts(cardLayouts, handDirection) {
+  if (handDirection !== "rtl") {
+    return cardLayouts;
+  }
+
+  return cardLayouts.map((layout, index, allLayouts) => ({
+    ...allLayouts[allLayouts.length - 1 - index],
+    index
+  }));
+}
+
 function getHandLayoutMetrics(total) {
   const firstCard = cardTable.querySelector(".card");
 
@@ -1261,6 +3950,7 @@ function getHandLayoutMetrics(total) {
     window.innerWidth;
   const availableWidth = Math.max(0, baseFrameWidth - paddingLeft - paddingRight);
   const handLayoutMode = getHandLayoutMode();
+  const handDirection = getHandDirection();
   const alphaDeg = getAlphaDeg();
   const phiDeg = getPhiDeg();
   const demoOuterDropPct = getDemoOuterDropPct();
@@ -1350,9 +4040,11 @@ function getHandLayoutMetrics(total) {
         y: offsetY + point.y
       }))
     : null;
+  const visualCardLayouts = applyHandDirectionToCardLayouts(positionedCards, handDirection);
 
   return {
     handLayoutMode,
+    handDirection,
     cardWidth,
     cardHeight,
     faceAnchorBottom,
@@ -1387,7 +4079,7 @@ function getHandLayoutMetrics(total) {
     maxOuterDropPx: layoutState.maxOuterDropPx ?? 0,
     gapAnglesDeg: layoutState.gapAnglesDeg ?? null,
     gapDropsPx: layoutState.gapDropsPx ?? null,
-    cardLayouts: positionedCards
+    cardLayouts: visualCardLayouts
   };
 }
 
@@ -1419,33 +4111,133 @@ function syncTableFrameWidth() {
 }
 
 function layoutHandCards(total) {
-  const cardElements = Array.from(cardTable.querySelectorAll(".card"));
-  const metrics = getHandLayoutMetrics(total);
+  const cardElements = getCardElementsInCurrentLayoutOrder();
 
-  if (cardElements.length === 0 || !metrics) {
+  if (cardElements.length === 0) {
     return;
   }
 
+  const fullMetrics = getHandLayoutMetrics(total);
+  if (!fullMetrics) {
+    return;
+  }
+  let metrics = fullMetrics;
+
+  let layoutEntries = cardElements.map((cardElement, index) => ({
+    cardElement,
+    orderIndex: index,
+    layoutIndex: index
+  }));
+
+  if (isSuitDragActive()) {
+    const suitDragLayoutPlan = buildSuitDragLayoutPlan(cardElements);
+    if (suitDragLayoutPlan?.metrics && Array.isArray(suitDragLayoutPlan.layoutEntries)) {
+      metrics = suitDragLayoutPlan.metrics;
+      layoutEntries = suitDragLayoutPlan.layoutEntries;
+    }
+  }
+
+  if (!Array.isArray(metrics.cardLayouts) || metrics.cardLayouts.length === 0) {
+    return;
+  }
+
+  const shadowStrengthFactor = getHandDepthShadowStrengthFactor();
+  const shadowDirectionAngleRad = degToRad((getHandDepthShadowDirectionHourIndex() * 30) - 90);
+
   cardTable.style.width = `${Math.ceil(metrics.tableWidth)}px`;
   cardTable.style.minWidth = `${Math.ceil(metrics.tableWidth)}px`;
+  const layoutCards = [];
+  const layoutCardModels = [];
+  layoutEntries.forEach((entry) => {
+    const layoutIndex = Number.isInteger(entry.layoutIndex)
+      ? entry.layoutIndex
+      : entry.orderIndex;
+    if (layoutIndex < 0 || layoutIndex >= metrics.cardLayouts.length) {
+      return;
+    }
+    layoutCards.push(entry.cardElement);
+    layoutCardModels.push(metrics.cardLayouts[layoutIndex]);
+  });
 
-  cardElements.forEach((cardElement, index) => {
-    const cardLayout = metrics.cardLayouts[index];
+  const dragTargetTiltDeg = getCardDragTargetTiltDegFromLayout(layoutCards, layoutCardModels);
+  if (isCardDragActive()) {
+    cardDragState.dragCardDynamicTiltDeg = dragTargetTiltDeg;
+  }
+
+  const suitDragShadowPlan = buildSuitDragShadowLayoutPlan(cardElements, fullMetrics);
+  const suitDragCurveSamples = buildSuitDragCurveSamples(layoutEntries, metrics);
+  const suitDragTargetTiltDeg = getSuitDragTargetTiltDegFromLayoutEntries(
+    layoutEntries,
+    metrics,
+    suitDragCurveSamples
+  );
+  const suitDragTargetCenter = getSuitDragTargetCenterFromLayoutEntries(
+    layoutEntries,
+    metrics,
+    suitDragCurveSamples
+  );
+  if (isSuitDragActive()) {
+    const shadowLayoutsById = suitDragShadowPlan?.layoutsById;
+    if (shadowLayoutsById instanceof Map && shadowLayoutsById.size > 0) {
+      cardDragState.dragGroupShadowLayoutsById = shadowLayoutsById;
+      cardDragState.dragGroupShadowModelActive = true;
+    } else {
+      cardDragState.dragGroupShadowLayoutsById = null;
+      cardDragState.dragGroupShadowModelActive = false;
+    }
+
+    cardDragState.dragGroupCurveSamples = suitDragCurveSamples;
+    cardDragState.dragGroupDynamicTiltDeg = suitDragTargetTiltDeg;
+    cardDragState.dragGroupDynamicCenterTableX = suitDragTargetCenter?.centerX ?? null;
+    cardDragState.dragGroupDynamicCenterTableY = suitDragTargetCenter?.centerY ?? null;
+    cardDragState.dragGroupDynamicCenterClientX = getDraggedSuitGroupCenterClientX();
+    cardDragState.dragGroupPointerDeltaY = cardDragState.lastClientY - cardDragState.startClientY;
+  }
+
+  layoutEntries.forEach((entry) => {
+    const cardElement = entry.cardElement;
+    const layoutIndex = Number.isInteger(entry.layoutIndex)
+      ? Math.max(0, Math.min(entry.layoutIndex, metrics.cardLayouts.length - 1))
+      : Math.max(0, Math.min(entry.orderIndex, metrics.cardLayouts.length - 1));
+    const cardLayout = metrics.cardLayouts[layoutIndex];
+    if (!cardLayout) {
+      return;
+    }
+
     const shadowDepth = metrics.cardLayouts.length <= 1
       ? 1
-      : index / (metrics.cardLayouts.length - 1);
-    const shadowOpacity = 0.09 + shadowDepth * 0.11;
-    const shadowBlur = 8 + shadowDepth * 10;
-    const shadowShiftY = shadowDepth * 3;
+      : layoutIndex / (metrics.cardLayouts.length - 1);
+    const shadowOpacity = Math.min(
+      0.28,
+      (0.06 + shadowDepth * 0.06) * shadowStrengthFactor
+    );
+    const shadowBlur = 4 + (shadowDepth * 5 + shadowStrengthFactor * 6);
+    const shadowDistance = (3 + shadowDepth * 8) * shadowStrengthFactor;
+    const globalShadowShift = {
+      x: Math.cos(shadowDirectionAngleRad) * shadowDistance,
+      y: Math.sin(shadowDirectionAngleRad) * shadowDistance
+    };
+    const localShadowShift = rotatePointClockwise(globalShadowShift, -cardLayout.thetaRad);
+    const shadowWidth = `${Math.min(108, 86 + shadowDepth * 6 + shadowStrengthFactor * 8).toFixed(1)}%`;
+    const shadowHeight = `${Math.min(112, 90 + shadowDepth * 6 + shadowStrengthFactor * 8).toFixed(1)}%`;
 
     cardElement.style.left = `${Math.round(cardLayout.left)}px`;
     cardElement.style.top = `${Math.round(cardLayout.top)}px`;
     cardElement.style.transformOrigin = "50% 100%";
-    cardElement.style.transform = `rotate(${cardLayout.thetaDeg}deg)`;
-    cardElement.style.zIndex = `${index + 1}`;
+    cardElement.dataset.handBaseTransform = `rotate(${cardLayout.thetaDeg}deg)`;
+    cardElement.dataset.handThetaDeg = `${cardLayout.thetaDeg}`;
+    cardElement.dataset.handCardWidthPx = `${metrics.cardWidth}`;
+    cardElement.dataset.handCardHeightPx = `${metrics.cardHeight}`;
+    cardElement.dataset.handBaseZIndex = `${layoutIndex + 1}`;
+    applyCardHandTransform(cardElement, cardElement.dataset.handBaseTransform, layoutIndex + 1);
+    applyCardDragVisual(cardElement);
+    applySuitDragVisual(cardElement);
     cardElement.style.setProperty("--hand-shadow-opacity", shadowOpacity.toFixed(3));
     cardElement.style.setProperty("--hand-shadow-blur", `${shadowBlur.toFixed(1)}px`);
-    cardElement.style.setProperty("--hand-shadow-shift-y", `${shadowShiftY.toFixed(1)}px`);
+    cardElement.style.setProperty("--hand-shadow-width", shadowWidth);
+    cardElement.style.setProperty("--hand-shadow-height", shadowHeight);
+    cardElement.style.setProperty("--hand-shadow-shift-x", `${localShadowShift.x.toFixed(1)}px`);
+    cardElement.style.setProperty("--hand-shadow-shift-y", `${localShadowShift.y.toFixed(1)}px`);
   });
 }
 
@@ -1599,10 +4391,19 @@ function getHandLayoutDiagnostics() {
   return {
     timestamp: new Date().toISOString(),
     deckId: activeDeck?.deckId ?? null,
+    availableJokerCount: availableJokers.length,
+    jokersEnabled,
+    jokerCount,
+    selectedJokerId,
+    lastSelectedJokerId,
+    runtimeDeckCount: getDeckMaxCount(),
     cardCount: currentCards.length,
     viewMode: getViewMode(),
     handLayoutMode: getHandLayoutMode(),
-    handSortEnabled: isHandSortEnabled(),
+    handDirection: getHandDirection(),
+    handSuitSortMode: getHandSuitSortMode(),
+    rankSortEnabled: isRankSortEnabled(),
+    handSortModeEffective: getEffectiveHandSortMode(),
     handRankPolicy: getHandRankPolicy(),
     cardSizePx: getCardSizePx(),
     visibilityFactor: getVisibilityFactor(),
@@ -2002,6 +4803,7 @@ async function renderCards(cards, options = {}) {
 
   // Any re-render interrupts wireframe and running fan animation.
   clearFanAnimation();
+  resetCardDragState();
   exitWireframeMode();
 
   const renderId = renderRequestId + 1;
@@ -2076,11 +4878,12 @@ function drawFromInput() {
   }
 
   clearStatus();
+  clearManualCardOrder();
+  clearManualSuitOrder();
   currentCards = drawCards(count);
   return renderCards(currentCards, { fanAnimation: true });
 }
 
-drawButton.addEventListener("click", drawFromInput);
 cardCountInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -2106,6 +4909,75 @@ document.addEventListener("keydown", (event) => {
   drawFromInput();
 });
 
+cardTable.addEventListener("pointermove", (event) => {
+  if (handleSuitDragPointerMove(event)) {
+    return;
+  }
+
+  if (handleCardDragPointerMove(event)) {
+    return;
+  }
+
+  refreshHandHoverFromPointerEvent(event);
+});
+
+cardTable.addEventListener("pointerdown", (event) => {
+  if (beginPendingSuitDrag(event)) {
+    return;
+  }
+
+  beginPendingCardDrag(event);
+});
+
+cardTable.addEventListener("pointerup", (event) => {
+  if (handleSuitDragPointerEnd(event, { commit: true })) {
+    return;
+  }
+
+  if (handleCardDragPointerEnd(event, { commit: true })) {
+    return;
+  }
+
+  refreshHandHoverFromPointerEvent(event);
+});
+
+cardTable.addEventListener("pointercancel", (event) => {
+  if (handleSuitDragPointerEnd(event, { commit: false })) {
+    return;
+  }
+
+  handleCardDragPointerEnd(event, { commit: false });
+});
+
+cardTable.addEventListener("pointerleave", () => {
+  clearHandHoverState();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && cardDragState !== null) {
+    event.preventDefault();
+    resetCardDragState();
+    if (currentCards.length > 0 && getViewMode() === "hand") {
+      refreshHandLayoutFromControls();
+    }
+    return;
+  }
+
+  if (!isHoverModifierKey(event)) {
+    return;
+  }
+
+  refreshHandHoverFromKeyEvent(event);
+});
+
+document.addEventListener("keyup", (event) => {
+  if (!isHoverModifierKey(event)) {
+    return;
+  }
+
+  refreshHandHoverFromKeyEvent(event);
+});
+
 if (deckSelect) {
   deckSelect.addEventListener("change", async () => {
     const selectedDeckId = deckSelect.value;
@@ -2117,6 +4989,47 @@ if (deckSelect) {
     } catch (_error) {
       setStatus("Failed to load selected normalized deck.");
     }
+  });
+}
+
+if (jokersEnabledToggle) {
+  jokersEnabledToggle.addEventListener("change", () => {
+    jokersEnabled = jokersEnabledToggle.checked;
+
+    if (jokersEnabled && !findAvailableJokerById(selectedJokerId)) {
+      selectedJokerId = getPreferredJokerSelectionId();
+      if (selectedJokerId) {
+        lastSelectedJokerId = selectedJokerId;
+      }
+    }
+
+    reconcileJokerSetupState();
+    syncJokerSetupControls();
+    drawFromInput();
+  });
+}
+
+if (jokerCountInput) {
+  jokerCountInput.addEventListener("input", () => {
+    jokerCount = clampJokerCount(jokerCountInput.value);
+    reconcileJokerSetupState();
+    syncJokerSetupControls();
+    drawFromInput();
+  });
+}
+
+if (jokerDesignSelect) {
+  jokerDesignSelect.addEventListener("change", () => {
+    const candidateId = jokerDesignSelect.value;
+    if (!findAvailableJokerById(candidateId)) {
+      return;
+    }
+
+    selectedJokerId = candidateId;
+    lastSelectedJokerId = candidateId;
+    reconcileJokerSetupState();
+    syncJokerSetupControls();
+    drawFromInput();
   });
 }
 
@@ -2157,8 +5070,32 @@ handLayoutModeInputs.forEach((input) => {
   });
 });
 
-if (handSortEnabledToggle) {
-  handSortEnabledToggle.addEventListener("change", () => {
+handDirectionInputs.forEach((input) => {
+  input.addEventListener("change", () => {
+    const selectedDirection = getHandDirection();
+    setStoredHandDirection(selectedDirection);
+    updateHandModeControls();
+
+    if (currentCards.length > 0 && getViewMode() === "hand") {
+      refreshHandLayoutFromControls();
+    }
+  });
+});
+
+if (rankSortEnabledToggle) {
+  rankSortEnabledToggle.addEventListener("change", () => {
+    enforceHandSortControlCoercion();
+    updateHandModeControls();
+
+    if (currentCards.length > 0 && getViewMode() === "hand") {
+      renderCards(currentCards);
+    }
+  });
+}
+
+if (handSuitSortModeSelect) {
+  handSuitSortModeSelect.addEventListener("change", () => {
+    enforceHandSortControlCoercion();
     updateHandModeControls();
 
     if (currentCards.length > 0 && getViewMode() === "hand") {
@@ -2171,7 +5108,7 @@ if (handRankPolicySelect) {
   handRankPolicySelect.addEventListener("change", () => {
     updateHandModeControls();
 
-    if (currentCards.length > 0 && getViewMode() === "hand" && isHandSortEnabled()) {
+    if (currentCards.length > 0 && getViewMode() === "hand" && isRankSortEnabled()) {
       renderCards(currentCards);
     }
   });
@@ -2208,6 +5145,14 @@ if (handRankPolicySelect) {
     }
   });
 });
+
+if (handDepthShadowStrengthSlider) {
+  handDepthShadowStrengthSlider.addEventListener("input", () => {
+    setStoredHandDepthShadowStrengthPct(getHandDepthShadowStrengthPct());
+    updateHandGeometryValueLabels();
+    refreshHandLayoutFromControls();
+  });
+}
 
 [
   { slider: fanDurationSlider, valueEl: fanDurationSliderValue, decimals: 1 },
@@ -2261,6 +5206,7 @@ if (handDepthShadowToggle) {
   handDepthShadowToggle.addEventListener("change", () => {
     setStoredHandDepthShadowEnabled(handDepthShadowToggle.checked);
     applyHandDepthShadowState();
+    updateHandModeControls();
   });
 }
 
@@ -2282,7 +5228,13 @@ window.addEventListener("resize", () => {
 async function initializeApp() {
   initializeViewMode();
   initializeHandLayoutMode();
+  initializeHandDirection();
+  initializeHandSortingControls();
+  initializeJokerSetupState();
   initializeHandDepthShadowToggle();
+  initializeHandDepthShadowStrengthSlider();
+  initializeHandDepthShadowDirectionClock();
+  syncJokerSetupControls();
   applyCardSizeCssVariables();
   syncAlphaSliderForMode(true);
   updateHandGeometryValueLabels();

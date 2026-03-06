@@ -56,11 +56,40 @@
     return SUIT_COLORS[suit];
   }
 
+  function getEntrySourceIndex(entry) {
+    if (Number.isInteger(entry?.sourceIndex) && entry.sourceIndex >= 0) {
+      return entry.sourceIndex;
+    }
+
+    if (Number.isInteger(entry?.originalIndex) && entry.originalIndex >= 0) {
+      return entry.originalIndex;
+    }
+
+    return 0;
+  }
+
+  function resolveDealIndex(card, fallbackIndex) {
+    if (Number.isInteger(card?.dealIndex) && card.dealIndex >= 0) {
+      return card.dealIndex;
+    }
+
+    return fallbackIndex;
+  }
+
   function annotateCards(cards) {
-    return cards.map((card, originalIndex) => ({
-      card,
-      originalIndex
-    }));
+    return cards
+      .map((card, sourceIndex) => ({
+        card,
+        sourceIndex,
+        originalIndex: resolveDealIndex(card, sourceIndex)
+      }))
+      .sort((left, right) => {
+        if (left.originalIndex !== right.originalIndex) {
+          return left.originalIndex - right.originalIndex;
+        }
+
+        return left.sourceIndex - right.sourceIndex;
+      });
   }
 
   function compareAnnotatedCards(left, right, rankStrengthMap) {
@@ -71,7 +100,11 @@
       return leftStrength - rightStrength;
     }
 
-    return left.originalIndex - right.originalIndex;
+    if (left.originalIndex !== right.originalIndex) {
+      return left.originalIndex - right.originalIndex;
+    }
+
+    return getEntrySourceIndex(left) - getEntrySourceIndex(right);
   }
 
   function sortSuitCards(cards, rankPolicy) {

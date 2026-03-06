@@ -1,6 +1,6 @@
 # Development Tracker
 
-Last updated: 2026-03-02 (session 3)
+Last updated: 2026-03-05 (session 6)
 Source: matrix/hand roadmap and current implementation status.
 
 ## Tracking Model
@@ -50,8 +50,8 @@ Meta fields on each item:
   Meta: ID:CTP-WS02-02-1-03 | A:2026-02-25 | U:2026-02-25 | T:POC
 - [x] Animate transitions between matrix and hand views.
   Meta: ID:CTP-WS02-02-1-04 | A:2026-02-25 | U:2026-02-25 | T:POC
-- [ ] Implement fixed row-size matrix renderer with deterministic left-to-right fill.
-  Meta: ID:CTP-WS02-02-1-05 | A:2026-02-25 | U:2026-02-25 | T:POC
+- [x] Implement fixed row-size matrix renderer with deterministic left-to-right fill.
+  Meta: ID:CTP-WS02-02-1-05 | A:2026-02-25 | U:2026-03-03 | T:POC
 
 ### 02.2 Hand Layout Geometry (Current)
 - [x] Replace discrete hand-layout modes with a single geometry-driven hand renderer.
@@ -111,6 +111,16 @@ Meta fields on each item:
   Meta: ID:CTP-WS02-02-3-09 | A:2026-03-01 | U:2026-03-01 | T:POC
 - [x] Add optional card-under-shadow rendering in hand view to improve depth perception and stacking readability.
   Meta: ID:CTP-WS02-02-3-10 | A:2026-03-02 | U:2026-03-02 | T:POC
+- [x] Add a `shadow strength` control for hand depth shadows so users can scale the depth cue without disabling it.
+  Meta: ID:CTP-WS02-02-3-11 | A:2026-03-03 | U:2026-03-03 | T:POC
+- [x] Add a clock-style `shadow direction` control with 12-step selection for hand depth shadows.
+  Meta: ID:CTP-WS02-02-3-12 | A:2026-03-03 | U:2026-03-03 | T:POC
+- [x] Hide the current hand depth shadow controls and suppress the effect by default pending a hand-level shadow redesign.
+  Meta: ID:CTP-WS02-02-3-13 | A:2026-03-03 | U:2026-03-03 | T:POC
+- [x] Remove the visible `Draw` button and rely on the existing desktop `Enter` shortcut, with an explicit header hint for redraw discoverability.
+  Meta: ID:CTP-WS02-02-3-14 | A:2026-03-03 | U:2026-03-03 | T:POC
+- [x] Raise the card-height default to `300 px` with a `400 px` maximum, default the hand size to `13`, and start with fan animation disabled.
+  Meta: ID:CTP-WS02-02-3-15 | A:2026-03-03 | U:2026-03-03 | T:POC
 
 ### 02.4 Hand Animation
 
@@ -120,8 +130,8 @@ Meta fields on each item:
   Meta: ID:CTP-WS02-02-4-02 | A:2026-03-01 | U:2026-03-01 | T:POC
 - [x] Fan animation on slider release: exiting wireframe mode triggers fan animation at the correct final positions.
   Meta: ID:CTP-WS02-02-4-03 | A:2026-03-01 | U:2026-03-01 | T:POC
-- [x] Fan animation timing controls: `fan step (s/card)` slider (0.02–0.10 s, default 0.05 s) and `fan max total (s)` slider (0.2–3.0 s, default 1.0 s); effective step = min(perCard, maxTotal/(N-1)).
-  Meta: ID:CTP-WS02-02-4-04 | A:2026-03-01 | U:2026-03-01 | T:POC
+- [x] Fan animation timing controls: `fan duration (s)` slider (0.5–2.0 s, default 1.0 s) and `fan step (ms)` slider (10–100 ms, default 50); effective step = min(stepMs, durationMs / N).
+  Meta: ID:CTP-WS02-02-4-04 | A:2026-03-01 | U:2026-03-03 | T:POC
 - [x] Pointer-down on hand-layout slider interrupts any running fan animation and immediately enters wireframe mode.
   Meta: ID:CTP-WS02-02-4-05 | A:2026-03-01 | U:2026-03-01 | T:POC
 - [ ] Right-to-left fan animation direction option.
@@ -164,14 +174,16 @@ Meta fields on each item:
   Meta: ID:CTP-WS03-03-3-04 | A:2026-03-02 | U:2026-03-02 | T:POC
 
 ### 03.4 View Integration and Direction
-- [ ] Keep semantic hand sort order fixed while mirroring only visual placement for future `rtl` hand rendering.
-  Meta: ID:CTP-WS03-03-4-01 | A:2026-03-02 | U:2026-03-02 | T:POC
-- [ ] Keep reveal direction tied to hand render direction, not to suit-group sort order.
-  Meta: ID:CTP-WS03-03-4-02 | A:2026-03-02 | U:2026-03-02 | T:POC
+- [x] Keep semantic hand sort order fixed while mirroring only visual placement for `rtl` hand rendering.
+  Meta: ID:CTP-WS03-03-4-01 | A:2026-03-02 | U:2026-03-03 | T:POC
+- [x] Keep reveal direction tied to hand render direction, not to suit-group sort order.
+  Meta: ID:CTP-WS03-03-4-02 | A:2026-03-02 | U:2026-03-03 | T:POC
 - [x] Add hand-view sorting controls for v1 sort policy and rank policy.
   Meta: ID:CTP-WS03-03-4-03 | A:2026-03-02 | U:2026-03-02 | T:POC
 - [x] Hide or otherwise suppress hand-only sorting controls when `matrix` view is active.
   Meta: ID:CTP-WS03-03-4-04 | A:2026-03-02 | U:2026-03-02 | T:POC
+- [x] Add a persisted `LTR` / `RTL` hand-direction control for hand view.
+  Meta: ID:CTP-WS03-03-4-05 | A:2026-03-03 | U:2026-03-03 | T:POC
 
 ### 03.5 Future Extensions
 - [ ] Add manual player-defined suit-group policy as a second suit-order mode after v1 semantic sorting is stable.
@@ -182,6 +194,50 @@ Meta fields on each item:
   Meta: ID:CTP-WS03-03-5-03 | A:2026-03-02 | U:2026-03-02 | T:POC
 - [ ] Add optional suit-group spacing gaps.
   Meta: ID:CTP-WS03-03-5-04 | A:2026-03-02 | U:2026-03-02 | T:POC
+
+### 03.6 Sorting Controls v2
+- [x] Define v2 sorting controls spec with `suit sort` (`auto`/`manual`) and `rank sort` (`on`/`off`) including coercion and behavior matrix.
+  Meta: ID:CTP-WS03-03-6-01 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Add hand-view UI controls for `suit sort` and `rank sort`, keeping current v1 behavior as `auto + rank on`.
+  Meta: ID:CTP-WS03-03-6-02 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Add immutable per-card `dealIndex` and use it as deterministic baseline tie-break/manual-order source.
+  Meta: ID:CTP-WS03-03-6-03 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Implement effective sorting modes: `auto_ranked`, `manual_suits_ranked`, and `manual_free`.
+  Meta: ID:CTP-WS03-03-6-04 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [ ] Add diagnostics fields for requested/effective sort mode and manual-order activation flags.
+  Meta: ID:CTP-WS03-03-6-05 | A:2026-03-05 | U:2026-03-05 | T:POC
+
+### 03.7 Drag Reorder Interaction v1
+- [x] Define v1 hand drag interaction spec (hover eject, card drag in `rank off`, modifier-based suit drag in `rank on`).
+  Meta: ID:CTP-WS03-03-7-01 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Implement hover eject visuals for card and suit-hover modes.
+  Meta: ID:CTP-WS03-03-7-02 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Implement single-card drag reorder with gap preview and `manualCardOrder` commit in `manual_free`.
+  Meta: ID:CTP-WS03-03-7-03 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Implement modifier-based suit-block drag reorder with `manualSuitOrder` commit in ranked modes.
+  Meta: ID:CTP-WS03-03-7-04 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [ ] Add drag diagnostics fields and `Escape` drag-cancel behavior.
+  Meta: ID:CTP-WS03-03-7-05 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Document current single-card drag movement/gap algorithm and state model for maintainability.
+  Meta: ID:CTP-WS03-03-7-06 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Extend suit-block drag grouping to include a shared `jokers` group when jokers are present.
+  Meta: ID:CTP-WS03-03-7-07 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Refine suit-block drag visual remap: fixed 2-slot preview gap plus curve-aligned dynamic center/tilt reconstruction (including per-card local offsets) to avoid frozen Y-shape artifacts.
+  Meta: ID:CTP-WS03-03-7-08 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Remove hard edge-wall in suit drag remap by adding linear extrapolation of center/tilt beyond curve sample bounds.
+  Meta: ID:CTP-WS03-03-7-09 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Adapt demo-mode outer-drop direction during suit drag via per-card curve sampling (longitudinal curve lookup + lateral normal offset), replacing rigid group-only remap.
+  Meta: ID:CTP-WS03-03-7-10 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add hybrid suit-drag pose model: primary shadow final-layout reconstruction (exact drop pose + pointer Y-lift) with automatic fallback to prior per-card curve-sampling remap.
+  Meta: ID:CTP-WS03-03-7-11 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Refine hybrid shadow model to continuous suit-drag interpolation between insertion slots with edge extrapolation, removing discrete snapping and edge wall effects while keeping fallback path.
+  Meta: ID:CTP-WS03-03-7-12 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Expand suit-drag docs with explicit shadow interpolation algorithm, edge extrapolation behavior, and frame-level fallback triggers.
+  Meta: ID:CTP-WS03-03-7-13 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Enable single-card drag in ranked modes (without modifier) and, on changed drop, auto-switch `rank sort` to `off` while preserving current sorted sequence for non-dragged cards.
+  Meta: ID:CTP-WS03-03-7-14 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add drag cursor affordance in hand view: keep idle cursor neutral and show `grab` while any drag is active via `.card-table--dragging`.
+  Meta: ID:CTP-WS03-03-7-15 | A:2026-03-06 | U:2026-03-06 | T:POC
 
 ## WS-04 Interaction and Mobile (Backlog)
 
@@ -203,3 +259,23 @@ Meta fields on each item:
   Meta: ID:CTP-WS05-05-1-02 | A:2026-02-25 | U:2026-02-25 | T:POC
 - [ ] Persist motion/mobile settings in `sessionStorage` once those controls are implemented.
   Meta: ID:CTP-WS05-05-1-03 | A:2026-02-25 | U:2026-02-25 | T:POC
+
+## WS-06 Deck and Joker Assets (In Progress)
+
+### 06.1 Deck-Native Joker Discovery
+- [x] Define deck-native joker contract: joker assets remain in deck folders while setup can select from all discovered jokers.
+  Meta: ID:CTP-WS06-06-1-01 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Remove standalone `assets/jokers` scaffold and keep joker provenance deck-local.
+  Meta: ID:CTP-WS06-06-1-02 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Add derived runtime joker catalog from deck manifests (all `rank=JOKER` entries).
+  Meta: ID:CTP-WS06-06-1-03 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Ensure runtime deck selection shows 52-card base decks while jokers are injected separately.
+  Meta: ID:CTP-WS06-06-1-04 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Add runtime setup/state contract for jokers toggle + joker count (`0..4`) + latest-selection default.
+  Meta: ID:CTP-WS06-06-1-05 | A:2026-03-05 | U:2026-03-05 | T:POC
+
+### 06.2 Joker UX (Backlog)
+- [ ] Add joker design picker UI with clear selected-state highlighting.
+  Meta: ID:CTP-WS06-06-2-01 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [ ] Add optional future recommendation mode to suggest best-fitting joker per selected deck, prioritizing native jokers first.
+  Meta: ID:CTP-WS06-06-2-02 | A:2026-03-05 | U:2026-03-05 | T:POC
