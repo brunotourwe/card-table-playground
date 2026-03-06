@@ -22,11 +22,18 @@ For deck updates (adding cards, SVGs, metadata), use the deck pipeline commands 
 
 ### Card Drawing
 
-- Select a deck from the deck selector; the available card count updates to match the deck size.
+- Select a deck from **Advanced controls**; the available card count updates to match the deck size.
 - Draw a random hand of N cards from the selected deck (1 up to the deck's full size).
 - Input is validated; invalid values show a status message.
 - Auto-draw triggers on card-count spinner changes (150 ms debounce).
 - Press **Enter** from anywhere on the page to draw (suppressed when an input or select has focus).
+
+### Controls Surface
+
+- Main controls are intentionally compact: `Number of cards` + `Sorting` preset selector.
+- Sorting presets are presented in a single horizontal row.
+- Remaining setup/tuning controls are opened via an `Advanced pane` button on the same top control row.
+- The advanced pane is an overlay panel (out of normal page flow) so the table canvas keeps full horizontal space.
 
 ### Card Render Modes
 
@@ -38,6 +45,8 @@ For deck updates (adding cards, SVGs, metadata), use the deck pipeline commands 
 
 - Card height configurable via slider (90–400 px).
 - Card width derives from height using a fixed aspect ratio.
+- Card height selection persists across hard reloads in the current tab session.
+- In hand view, use the mouse wheel over a hand card to resize card height quickly (`8 px` per wheel step).
 
 ### Table Views
 
@@ -94,6 +103,7 @@ Demo behavior:
 - Outer shoulders reduce the per-card angle difference toward 25% of the center gap angle instead of reaching zero.
 - Shoulder descent comes from both residual card tilt and the configurable extra outer drop.
 - `phiDeg` does not apply in Demo mode.
+- Current startup defaults are tuned for play-surface space: `demo` layout, `visibilityFactor=0.36`, `gap angle=0.8`, `card height=300`, fan animation off.
 
 ### Hand Sorting
 
@@ -101,11 +111,14 @@ Demo behavior:
 - `matrix` view remains unsorted.
 - Hand sorting is semantic; future right-to-left hand rendering should mirror placement only, not reverse the sorted sequence.
 - Current controls:
-  - `Suit sort`: `auto` or `manual`
-  - `Rank sort`: `on` or `off`
+  - `Auto sort` (`auto_ranked`)
+  - `Auto rank (manual suit)` (`manual_suits_ranked`)
+  - `Manual sort` (`manual_free`)
+- Advanced sub-control:
   - `Rank policy`: `high_low` or `low_high`
 - Suit-group ordering is optimized globally for alternating color, then resolved by full per-suit rank profile, then suit count, then fallback suit priority.
 - Jokers always remain in a separate final group.
+- Hand direction control is temporarily disabled and forced to `LTR` pending deck orientation metadata (`poker` vs `bridge`).
 
 Detailed rules are defined in `docs/specs/hand-sorting-v2.md`.
 
@@ -143,6 +156,9 @@ Detailed rules are defined in `docs/specs/deck-joker-assets-v2.md`.
 - `max-width` is `calc(100vw − 24px)` — frame never overflows the viewport.
 - Frame is always centered on the page.
 - `body { min-width: 640px }` — viewports narrower than the 4-column control grid get a horizontal scrollbar instead of layout collapse.
+- In hand view, canvas height is fixed after the first hand render; cards stay bottom-anchored in the viewport, so oversized cards clip at the bottom.
+- Table height is derived from viewport budget only (independent of card size and advanced pane state) so it can use full available page height.
+- Table surface uses layered cloth shading to emulate subtle velvet texture without reducing card readability.
 
 ### Debug Overlays
 

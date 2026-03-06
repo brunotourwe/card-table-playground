@@ -1,6 +1,6 @@
 # Development Tracker
 
-Last updated: 2026-03-05 (session 6)
+Last updated: 2026-03-06 (session 9)
 Source: matrix/hand roadmap and current implementation status.
 
 ## Tracking Model
@@ -121,6 +121,40 @@ Meta fields on each item:
   Meta: ID:CTP-WS02-02-3-14 | A:2026-03-03 | U:2026-03-03 | T:POC
 - [x] Raise the card-height default to `300 px` with a `400 px` maximum, default the hand size to `13`, and start with fan animation disabled.
   Meta: ID:CTP-WS02-02-3-15 | A:2026-03-03 | U:2026-03-03 | T:POC
+- [x] Split controls into a compact main row (`Number of cards` + sorting preset) and a collapsed `Advanced controls` section to free table canvas space.
+  Meta: ID:CTP-WS02-02-3-16 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Move deck and joker setup controls into `Advanced controls` to keep primary interaction surface gameplay-focused.
+  Meta: ID:CTP-WS02-02-3-17 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Set default hand setup profile to `demo` layout with `visibility factor = 0.36`, while keeping `card height = 300`, `gap angle = 0.8`, and fan animation off.
+  Meta: ID:CTP-WS02-02-3-18 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Reposition `Advanced controls` below the table surface to keep the main top section focused and minimize pre-table vertical clutter.
+  Meta: ID:CTP-WS02-02-3-19 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Expand hand-view table surface height target to `250%` of the rendered hand viewport while bottom-aligning the hand viewport so card bottoms stay at the same table-bottom reference.
+  Meta: ID:CTP-WS02-02-3-20 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Persist card-height slider value in session storage so card size survives hard reloads within the current browser tab session.
+  Meta: ID:CTP-WS02-02-3-21 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Freeze hand table-canvas height after initial hand render and keep cards bottom-anchored during card-height changes, so card scaling no longer resizes the canvas.
+  Meta: ID:CTP-WS02-02-3-22 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Keep hand content bottom-anchored inside the fixed viewport and apply progressive downward offset by card height so overflow clips at the bottom (up to ~50% at max card height).
+  Meta: ID:CTP-WS02-02-3-23 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add viewport-height budgeting for fixed table height so hard reload keeps `Advanced controls` visible near the bottom and clamps orange-table height to the available vertical space.
+  Meta: ID:CTP-WS02-02-3-24 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Enforce strict table/viewport height coupling so viewport height can never exceed the clamped orange-table content height.
+  Meta: ID:CTP-WS02-02-3-25 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Remove remaining hand-geometry influence from table height and size the orange table exclusively from viewport budget + collapsed advanced-controls reserve.
+  Meta: ID:CTP-WS02-02-3-26 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Replace below-table advanced-controls block with a top-row `Advanced pane` trigger and out-of-flow overlay panel so table width is never constrained by the controls pane.
+  Meta: ID:CTP-WS02-02-3-27 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Update table height budgeting to ignore advanced-controls reserve and clamp only against viewport space below the table top edge.
+  Meta: ID:CTP-WS02-02-3-28 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add wheel-resize shortcut in hand view to resize card height directly while hovering hand cards (`8 px` step), without using modifier keys.
+  Meta: ID:CTP-WS02-02-3-29 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Compress top-page vertical overhead (header/control spacing) and tighten table frame paddings so the orange table uses more available viewport height.
+  Meta: ID:CTP-WS02-02-3-30 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Reduce bottom hand gutter target (`hand pad bottom`) to keep only a small visual lane between the orange border and the card cutoff line.
+  Meta: ID:CTP-WS02-02-3-31 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add subtle cloth/velvet shading layers to the table surface and smooth the page background gradient to remove visible horizontal seam artifacts.
+  Meta: ID:CTP-WS02-02-3-32 | A:2026-03-06 | U:2026-03-06 | T:POC
 
 ### 02.4 Hand Animation
 
@@ -184,6 +218,8 @@ Meta fields on each item:
   Meta: ID:CTP-WS03-03-4-04 | A:2026-03-02 | U:2026-03-02 | T:POC
 - [x] Add a persisted `LTR` / `RTL` hand-direction control for hand view.
   Meta: ID:CTP-WS03-03-4-05 | A:2026-03-03 | U:2026-03-03 | T:POC
+- [x] Temporarily disable hand-direction UI and force effective hand direction to `LTR` pending deck orientation metadata (`poker` vs `bridge`) support.
+  Meta: ID:CTP-WS03-03-4-06 | A:2026-03-06 | U:2026-03-06 | T:POC
 
 ### 03.5 Future Extensions
 - [ ] Add manual player-defined suit-group policy as a second suit-order mode after v1 semantic sorting is stable.
@@ -206,6 +242,8 @@ Meta fields on each item:
   Meta: ID:CTP-WS03-03-6-04 | A:2026-03-05 | U:2026-03-05 | T:POC
 - [ ] Add diagnostics fields for requested/effective sort mode and manual-order activation flags.
   Meta: ID:CTP-WS03-03-6-05 | A:2026-03-05 | U:2026-03-05 | T:POC
+- [x] Replace primary hand sorting controls with a single 3-state preset selector (`auto sort`, `auto rank (manual suit)`, `manual sort`) mapped to existing effective modes.
+  Meta: ID:CTP-WS03-03-6-06 | A:2026-03-06 | U:2026-03-06 | T:POC
 
 ### 03.7 Drag Reorder Interaction v1
 - [x] Define v1 hand drag interaction spec (hover eject, card drag in `rank off`, modifier-based suit drag in `rank on`).
@@ -279,3 +317,7 @@ Meta fields on each item:
   Meta: ID:CTP-WS06-06-2-01 | A:2026-03-05 | U:2026-03-05 | T:POC
 - [ ] Add optional future recommendation mode to suggest best-fitting joker per selected deck, prioritizing native jokers first.
   Meta: ID:CTP-WS06-06-2-02 | A:2026-03-05 | U:2026-03-05 | T:POC
+
+### 06.3 Deck Orientation Metadata (Backlog)
+- [ ] Distinguish poker-style (2-corner index) vs bridge-style (4-corner index) decks in deck metadata and use it to gate hand-direction behavior.
+  Meta: ID:CTP-WS06-06-3-01 | A:2026-03-06 | U:2026-03-06 | T:POC

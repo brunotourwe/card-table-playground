@@ -1,7 +1,11 @@
 const cardTable = document.getElementById("card-table");
 const tableSection = document.querySelector(".table");
+const tableContainer = document.querySelector(".table-container");
 const tableViewport = document.querySelector(".table-viewport");
 const tableScroll = document.querySelector(".table-scroll");
+const advancedControlsPanel = document.querySelector(".advanced-controls-panel");
+const advancedControlsToggleButton = document.getElementById("advanced-controls-toggle");
+const advancedControlsCloseButton = document.getElementById("advanced-controls-close");
 const cardCountInput = document.getElementById("card-count");
 const cardCountLabel = document.getElementById("card-count-label");
 const deckSelect = document.getElementById("deck-select");
@@ -16,6 +20,7 @@ const renderModeInputs = document.querySelectorAll(
 const viewModeInputs = document.querySelectorAll("input[name=\"view-mode\"]");
 const handLayoutModeInputs = document.querySelectorAll("input[name=\"hand-layout-mode\"]");
 const handDirectionInputs = document.querySelectorAll("input[name=\"hand-direction\"]");
+const handSortPresetInputs = document.querySelectorAll("input[name=\"hand-sort-preset\"]");
 const handLayoutControls = document.querySelectorAll(".hand-layout-control");
 const cardSizeBox = document.getElementById("card-size-box");
 const handSuitSortModeSelect = document.getElementById("hand-suit-sort-mode");
@@ -57,6 +62,7 @@ let activeDeck = null;
 const VIEW_STORAGE_KEY = "ctp:view-mode";
 const HAND_LAYOUT_MODE_STORAGE_KEY = "ctp:hand-layout-mode";
 const HAND_DIRECTION_STORAGE_KEY = "ctp:hand-direction";
+const CARD_HEIGHT_STORAGE_KEY = "ctp:card-height-px";
 const JOKERS_ENABLED_STORAGE_KEY = "ctp:jokers-enabled";
 const JOKER_COUNT_STORAGE_KEY = "ctp:joker-count";
 const JOKER_SELECTED_STORAGE_KEY = "ctp:selected-joker-id";
@@ -71,9 +77,9 @@ const PRELOADED_DECK_INDEX = globalThis.__CTP_DECK_INDEX__;
 const PRELOADED_DECK_MANIFESTS = globalThis.__CTP_DECK_MANIFESTS__;
 const PRELOADED_SVG_MARKUP = globalThis.__CTP_DECK_SVG__;
 const VIEW_SWITCH_ANIMATION_MS = 240;
-const HAND_BASE_PADDING_TOP = 18;
-const HAND_BASE_PADDING_BOTTOM = 34;
-const HAND_PADDING_SAFETY = 2;
+const TABLE_HEIGHT_BUDGET_SAFETY_PX = 2;
+const HAND_BASE_PADDING_TOP = 14;
+const HAND_BASE_PADDING_BOTTOM = 14;
 const HAND_BASE_CANVAS_HEIGHT = 230;
 let viewSwitchTimeoutId = null;
 let resizeRenderTimeoutId = null;
@@ -120,8 +126,9 @@ const DEFAULT_CARD_COUNT = 13;
 const DEFAULT_CARD_HEIGHT_PX = 300;
 const MIN_CARD_HEIGHT_PX = 90;
 const MAX_CARD_HEIGHT_PX = 400;
-const DEFAULT_HAND_LAYOUT_MODE = "classic";
+const DEFAULT_HAND_LAYOUT_MODE = "demo";
 const DEFAULT_HAND_DIRECTION = "ltr";
+const HAND_DIRECTION_CONTROL_ENABLED = false;
 const DEFAULT_JOKERS_ENABLED = false;
 const MIN_JOKER_COUNT = 1;
 const MAX_JOKER_COUNT = 4;
@@ -129,7 +136,7 @@ const DEFAULT_JOKER_COUNT = 2;
 const DEFAULT_HAND_SUIT_SORT_MODE = "auto";
 const DEFAULT_RANK_SORT_ENABLED = true;
 const DEFAULT_HAND_RANK_POLICY = "high_low";
-const DEFAULT_VISIBILITY_FACTOR = 0.5;
+const DEFAULT_VISIBILITY_FACTOR = 0.36;
 const DEFAULT_ALPHA_DEG = 4;
 const DEFAULT_PHI_DEG = 40;
 const DEMO_MIN_ALPHA_DEG = 0.3;
@@ -151,6 +158,8 @@ const MAX_FAN_STEP_MS = 100;
 const HAND_HOVER_EJECT_RATIO = 0.07;
 const CARD_DRAG_START_THRESHOLD_PX = 7;
 const CARD_DRAG_DIRECTION_DEADZONE_PX = 2;
+const CARD_HEIGHT_WHEEL_STEP_PX = 8;
+const HAND_BOTTOM_CLIP_MAX_RATIO = 0.5;
 const SUIT_DRAG_GAP_SLOT_COUNT = 2;
 const SUIT_DRAG_SHADOW_MODEL_ENABLED = true;
 const URL_PARAMS = new URLSearchParams(window.location.search);
@@ -322,6 +331,26 @@ function clampJokerCount(value) {
   }
 
   return Math.min(MAX_JOKER_COUNT, Math.max(MIN_JOKER_COUNT, parsed));
+}
+
+function clampCardHeightPx(value) {
+  const parsed = Number.parseInt(`${value}`, 10);
+  if (!Number.isInteger(parsed)) {
+    return DEFAULT_CARD_HEIGHT_PX;
+  }
+
+  return Math.min(MAX_CARD_HEIGHT_PX, Math.max(MIN_CARD_HEIGHT_PX, parsed));
+}
+
+function getHandBottomClipRatio(cardHeightPx) {
+  const safeCardHeight = clampCardHeightPx(cardHeightPx);
+  const range = MAX_CARD_HEIGHT_PX - MIN_CARD_HEIGHT_PX;
+  if (range <= 0) {
+    return 0;
+  }
+
+  const normalized = (safeCardHeight - MIN_CARD_HEIGHT_PX) / range;
+  return Math.min(HAND_BOTTOM_CLIP_MAX_RATIO, Math.max(0, normalized * HAND_BOTTOM_CLIP_MAX_RATIO));
 }
 
 function findAvailableJokerById(jokerId) {
@@ -728,7 +757,11 @@ async function applyUrlDrivenTestConfig() {
   }
 
   const requestedHandDirection = URL_PARAMS.get("hand_direction");
-  if (requestedHandDirection && isSupportedHandDirection(requestedHandDirection)) {
+  if (
+    HAND_DIRECTION_CONTROL_ENABLED &&
+    requestedHandDirection &&
+    isSupportedHandDirection(requestedHandDirection)
+  ) {
     handDirectionInputs.forEach((input) => {
       input.checked = input.value === requestedHandDirection;
     });
@@ -1052,27 +1085,18 @@ function initializeViewMode() {
 }
 
 function getStoredHandLayoutMode() {
-  try {
-    const storedMode = sessionStorage.getItem(HAND_LAYOUT_MODE_STORAGE_KEY);
-    return isSupportedHandLayoutMode(storedMode) ? storedMode : DEFAULT_HAND_LAYOUT_MODE;
-  } catch (_error) {
-    return DEFAULT_HAND_LAYOUT_MODE;
-  }
+  return DEFAULT_HAND_LAYOUT_MODE;
 }
 
 function setStoredHandLayoutMode(mode) {
-  if (!isSupportedHandLayoutMode(mode)) {
-    return;
-  }
-
-  try {
-    sessionStorage.setItem(HAND_LAYOUT_MODE_STORAGE_KEY, mode);
-  } catch (_error) {
-    // Ignore storage failures in local/file-browser contexts.
-  }
+  void mode;
 }
 
 function getStoredHandDirection() {
+  if (!HAND_DIRECTION_CONTROL_ENABLED) {
+    return DEFAULT_HAND_DIRECTION;
+  }
+
   try {
     const storedDirection = sessionStorage.getItem(HAND_DIRECTION_STORAGE_KEY);
     return isSupportedHandDirection(storedDirection) ? storedDirection : DEFAULT_HAND_DIRECTION;
@@ -1082,6 +1106,10 @@ function getStoredHandDirection() {
 }
 
 function setStoredHandDirection(direction) {
+  if (!HAND_DIRECTION_CONTROL_ENABLED) {
+    return;
+  }
+
   if (!isSupportedHandDirection(direction)) {
     return;
   }
@@ -1101,7 +1129,25 @@ function initializeHandLayoutMode() {
   });
 }
 
+function initializeCardSizeControl() {
+  if (!cardSizeSlider) {
+    return;
+  }
+
+  const storedCardHeight = getStoredInteger(
+    CARD_HEIGHT_STORAGE_KEY,
+    DEFAULT_CARD_HEIGHT_PX,
+    clampCardHeightPx
+  );
+  cardSizeSlider.value = `${storedCardHeight}`;
+}
+
 function initializeHandDirection() {
+  if (!HAND_DIRECTION_CONTROL_ENABLED) {
+    setStoredHandDirection(DEFAULT_HAND_DIRECTION);
+    return;
+  }
+
   const initialDirection = getStoredHandDirection();
 
   handDirectionInputs.forEach((input) => {
@@ -1119,6 +1165,7 @@ function initializeHandSortingControls() {
   }
 
   enforceHandSortControlCoercion();
+  syncHandSortPresetControlsFromLegacy();
 }
 
 function getStoredHandDepthShadowEnabled() {
@@ -1332,6 +1379,53 @@ function isSupportedHandSuitSortMode(value) {
 
 function isSupportedHandRankPolicy(value) {
   return value === "high_low" || value === "low_high";
+}
+
+function isSupportedHandSortPreset(value) {
+  return value === "auto_ranked" || value === "manual_suits_ranked" || value === "manual_free";
+}
+
+function getSelectedHandSortPreset() {
+  const selected = document.querySelector("input[name=\"hand-sort-preset\"]:checked");
+  return selected && isSupportedHandSortPreset(selected.value) ? selected.value : "auto_ranked";
+}
+
+function syncHandSortPresetControlsFromLegacy() {
+  if (handSortPresetInputs.length === 0) {
+    return;
+  }
+
+  const effectiveMode = getEffectiveHandSortMode();
+  const preset = isSupportedHandSortPreset(effectiveMode) ? effectiveMode : "auto_ranked";
+  handSortPresetInputs.forEach((input) => {
+    input.checked = input.value === preset;
+  });
+}
+
+function applyHandSortPresetToLegacy(preset) {
+  if (
+    !isSupportedHandSortPreset(preset) ||
+    !handSuitSortModeSelect ||
+    !rankSortEnabledToggle
+  ) {
+    return;
+  }
+
+  handSuitSortModeBeforeRankSortOff = null;
+
+  if (preset === "manual_free") {
+    handSuitSortModeSelect.value = "manual";
+    rankSortEnabledToggle.checked = false;
+  } else if (preset === "manual_suits_ranked") {
+    handSuitSortModeSelect.value = "manual";
+    rankSortEnabledToggle.checked = true;
+  } else {
+    handSuitSortModeSelect.value = "auto";
+    rankSortEnabledToggle.checked = true;
+  }
+
+  enforceHandSortControlCoercion();
+  syncHandSortPresetControlsFromLegacy();
 }
 
 function getHandSuitSortMode() {
@@ -3545,6 +3639,66 @@ function applyCardSizeCssVariables() {
   document.documentElement.style.setProperty("--card-height", `${getCardSizePx()}px`);
 }
 
+function applyCardHeightSetting(nextCardHeightPx) {
+  const clampedCardHeight = clampCardHeightPx(nextCardHeightPx);
+  setStoredInteger(CARD_HEIGHT_STORAGE_KEY, clampedCardHeight, clampCardHeightPx);
+
+  if (cardSizeSlider) {
+    cardSizeSlider.value = `${clampedCardHeight}`;
+  }
+
+  applyCardSizeCssVariables();
+  updateHandGeometryValueLabels();
+
+  if (currentCards.length > 0) {
+    renderCards(currentCards);
+  }
+}
+
+function isAdvancedControlsPanelOpen() {
+  return advancedControlsPanel instanceof HTMLElement && !advancedControlsPanel.hidden;
+}
+
+function setAdvancedControlsPanelOpen(nextOpen) {
+  if (!(advancedControlsPanel instanceof HTMLElement) || !(advancedControlsToggleButton instanceof HTMLElement)) {
+    return;
+  }
+
+  const shouldOpen = Boolean(nextOpen);
+  advancedControlsPanel.hidden = !shouldOpen;
+  advancedControlsToggleButton.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+}
+
+function toggleAdvancedControlsPanel() {
+  setAdvancedControlsPanelOpen(!isAdvancedControlsPanelOpen());
+}
+
+function handleDocumentPointerDownForAdvancedControls(event) {
+  if (!isAdvancedControlsPanelOpen()) {
+    return;
+  }
+
+  const target = event.target;
+  if (!(target instanceof Node)) {
+    return;
+  }
+
+  if (advancedControlsPanel?.contains(target) || advancedControlsToggleButton?.contains(target)) {
+    return;
+  }
+
+  setAdvancedControlsPanelOpen(false);
+}
+
+function handleDocumentEscapeForAdvancedControls(event) {
+  if (event.key !== "Escape" || !isAdvancedControlsPanelOpen()) {
+    return;
+  }
+
+  setAdvancedControlsPanelOpen(false);
+  advancedControlsToggleButton?.focus();
+}
+
 function updateHandModeControls() {
   const viewMode = getViewMode();
   const isHandView = viewMode === "hand";
@@ -3595,6 +3749,10 @@ function updateHandModeControls() {
     rankSortEnabledToggle.disabled = !isHandView || HAND_SORTING_API === null;
   }
 
+  handSortPresetInputs.forEach((input) => {
+    input.disabled = !isHandView || HAND_SORTING_API === null;
+  });
+
   handDirectionInputs.forEach((input) => {
     input.disabled = !isHandView;
   });
@@ -3623,6 +3781,7 @@ function updateHandModeControls() {
       });
   }
 
+  syncHandSortPresetControlsFromLegacy();
   updateHandGeometryValueLabels();
   updateFanControlsState();
 }
@@ -4026,7 +4185,12 @@ function getHandLayoutMetrics(total) {
   const contentHeight = rawBounds.height;
   const tableWidth = Math.ceil(contentWidth + paddingLeft + paddingRight);
   const offsetX = paddingLeft - rawBounds.left;
-  const offsetY = paddingTop - rawBounds.top;
+  const canvasHeight =
+    cardTable.clientHeight ||
+    Math.max(HAND_BASE_CANVAS_HEIGHT + paddingTop + paddingBottom, Math.ceil(contentHeight));
+  const bottomClipPx = cardHeight * getHandBottomClipRatio(cardHeight);
+  const targetBottomY = canvasHeight + bottomClipPx;
+  const offsetY = targetBottomY - rawBounds.bottom;
   const positionedCards = layoutState.layouts.map((layout) => ({
     ...layout,
     screenAnchorX: offsetX + layout.anchorX,
@@ -4540,18 +4704,9 @@ function ensureHandCardsFullyVisible() {
     return false;
   }
 
-  const metrics = getHandLayoutMetrics(currentCards.length);
-
-  if (!metrics) {
-    return false;
-  }
-
   const nextPaddingTop = HAND_BASE_PADDING_TOP;
   const nextPaddingBottom = HAND_BASE_PADDING_BOTTOM;
-  const requiredCanvasHeight = Math.max(
-    HAND_BASE_CANVAS_HEIGHT,
-    Math.ceil(metrics.contentHeight + HAND_PADDING_SAFETY)
-  );
+  const requiredCanvasHeight = HAND_BASE_CANVAS_HEIGHT;
   const nextPaddingTopValue = `${nextPaddingTop}px`;
   const nextPaddingBottomValue = `${nextPaddingBottom}px`;
   const nextCanvasHeightValue = `${requiredCanvasHeight}px`;
@@ -4572,41 +4727,74 @@ function ensureHandCardsFullyVisible() {
   return changed;
 }
 
-function syncHandViewportHeight() {
-  if (!tableViewport || !tableScroll) {
-    return false;
+function getTableMaxOuterHeightFromViewport() {
+  if (!(tableSection instanceof HTMLElement)) {
+    return 0;
   }
 
-  if (getViewMode() !== "hand") {
-    const changed =
-      tableViewport.style.getPropertyValue("height") !== "" ||
-      tableViewport.style.getPropertyValue("min-height") !== "" ||
-      tableScroll.style.getPropertyValue("height") !== "" ||
-      tableScroll.style.getPropertyValue("min-height") !== "";
-    tableViewport.style.removeProperty("height");
-    tableViewport.style.removeProperty("min-height");
-    tableScroll.style.removeProperty("height");
-    tableScroll.style.removeProperty("min-height");
-    return changed;
+  const viewportHeight = window.innerHeight;
+  if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) {
+    return 0;
   }
 
-  const bounds = getRenderedCardBounds();
-  const metrics = getHandLayoutMetrics(currentCards.length);
-  const geometryHeight = metrics
-    ? metrics.paddingTop + metrics.contentHeight + metrics.paddingBottom
-    : 0;
-  const targetHeight = Math.max(
-    cardTable.clientHeight,
-    bounds ? Math.ceil(bounds.bottom - Math.min(0, bounds.top) + HAND_PADDING_SAFETY) : 0,
-    Math.ceil(geometryHeight + HAND_PADDING_SAFETY)
-  );
+  const tableTop = tableContainer instanceof HTMLElement
+    ? tableContainer.getBoundingClientRect().top
+    : tableSection.getBoundingClientRect().top;
+  const safeTableTop = Number.isFinite(tableTop) ? Math.max(0, tableTop) : 0;
+  const maxOuterHeight = viewportHeight - safeTableTop - TABLE_HEIGHT_BUDGET_SAFETY_PX;
 
-  if (targetHeight <= 0) {
-    return false;
+  return Math.max(1, Math.floor(maxOuterHeight));
+}
+
+function applyTableHeightBudget(desiredContentHeight = null) {
+  if (!(tableSection instanceof HTMLElement)) {
+    return null;
   }
 
-  const targetHeightValue = `${targetHeight}px`;
+  const maxOuterHeight = getTableMaxOuterHeightFromViewport();
+  if (maxOuterHeight <= 0) {
+    return null;
+  }
+
+  const tableStyle = window.getComputedStyle(tableSection);
+  const paddingTop = Number.parseFloat(tableStyle.paddingTop) || 0;
+  const paddingBottom = Number.parseFloat(tableStyle.paddingBottom) || 0;
+  const borderTop = Number.parseFloat(tableStyle.borderTopWidth) || 0;
+  const borderBottom = Number.parseFloat(tableStyle.borderBottomWidth) || 0;
+  const nonContentHeight = paddingTop + paddingBottom + borderTop + borderBottom;
+  const maxContentHeight = Math.max(1, Math.floor(maxOuterHeight - nonContentHeight));
+  const desired = Number.isFinite(desiredContentHeight)
+    ? Math.max(1, Math.floor(desiredContentHeight))
+    : maxContentHeight;
+  const nextContentHeight = Math.min(desired, maxContentHeight);
+  const nextContentHeightValue = `${nextContentHeight}px`;
+
   const changed =
+    tableSection.style.height !== nextContentHeightValue ||
+    tableSection.style.minHeight !== nextContentHeightValue ||
+    tableSection.style.maxHeight !== nextContentHeightValue;
+  tableSection.style.height = nextContentHeightValue;
+  tableSection.style.minHeight = nextContentHeightValue;
+  tableSection.style.maxHeight = nextContentHeightValue;
+  return {
+    changed,
+    appliedContentHeight: nextContentHeight
+  };
+}
+
+function syncHandViewportHeight() {
+  if (!tableViewport || !tableScroll || !tableSection) {
+    return false;
+  }
+
+  const tableBudgetResult = applyTableHeightBudget();
+  if (!tableBudgetResult) {
+    return false;
+  }
+
+  const effectiveViewportHeight = Math.max(1, Math.round(tableBudgetResult.appliedContentHeight));
+  const targetHeightValue = `${effectiveViewportHeight}px`;
+  const viewportChanged =
     tableViewport.style.height !== targetHeightValue ||
     tableViewport.style.minHeight !== targetHeightValue ||
     tableScroll.style.height !== targetHeightValue ||
@@ -4615,7 +4803,8 @@ function syncHandViewportHeight() {
   tableViewport.style.minHeight = targetHeightValue;
   tableScroll.style.height = targetHeightValue;
   tableScroll.style.minHeight = targetHeightValue;
-  return changed;
+
+  return viewportChanged || Boolean(tableBudgetResult.changed);
 }
 
 function stabilizeHandLayout(total) {
@@ -5082,9 +5271,22 @@ handDirectionInputs.forEach((input) => {
   });
 });
 
+handSortPresetInputs.forEach((input) => {
+  input.addEventListener("change", () => {
+    const selectedPreset = getSelectedHandSortPreset();
+    applyHandSortPresetToLegacy(selectedPreset);
+    updateHandModeControls();
+
+    if (currentCards.length > 0 && getViewMode() === "hand") {
+      renderCards(currentCards);
+    }
+  });
+});
+
 if (rankSortEnabledToggle) {
   rankSortEnabledToggle.addEventListener("change", () => {
     enforceHandSortControlCoercion();
+    syncHandSortPresetControlsFromLegacy();
     updateHandModeControls();
 
     if (currentCards.length > 0 && getViewMode() === "hand") {
@@ -5096,6 +5298,7 @@ if (rankSortEnabledToggle) {
 if (handSuitSortModeSelect) {
   handSuitSortModeSelect.addEventListener("change", () => {
     enforceHandSortControlCoercion();
+    syncHandSortPresetControlsFromLegacy();
     updateHandModeControls();
 
     if (currentCards.length > 0 && getViewMode() === "hand") {
@@ -5179,15 +5382,57 @@ if (fanAnimateToggle) {
   });
 }
 
+if (advancedControlsToggleButton) {
+  advancedControlsToggleButton.addEventListener("click", () => {
+    toggleAdvancedControlsPanel();
+  });
+}
+
+if (advancedControlsCloseButton) {
+  advancedControlsCloseButton.addEventListener("click", () => {
+    setAdvancedControlsPanelOpen(false);
+    advancedControlsToggleButton?.focus();
+  });
+}
+
+document.addEventListener("mousedown", handleDocumentPointerDownForAdvancedControls);
+document.addEventListener("keydown", handleDocumentEscapeForAdvancedControls);
+
+function handleHandWheelResize(event) {
+  if (getViewMode() !== "hand" || currentCards.length === 0) {
+    return;
+  }
+
+  if (isCardDragActive() || isSuitDragActive()) {
+    return;
+  }
+
+  const hoveredCardElement = getHandCardElementFromTarget(event.target);
+  if (!hoveredCardElement) {
+    return;
+  }
+
+  event.preventDefault();
+
+  const direction = event.deltaY < 0 ? 1 : -1;
+  const currentCardHeight = getCardSizePx();
+  const nextCardHeight = clampCardHeightPx(currentCardHeight + (direction * CARD_HEIGHT_WHEEL_STEP_PX));
+
+  if (nextCardHeight === currentCardHeight) {
+    return;
+  }
+
+  applyCardHeightSetting(nextCardHeight);
+}
+
 if (cardSizeSlider) {
   cardSizeSlider.addEventListener("input", () => {
-    applyCardSizeCssVariables();
-    updateHandGeometryValueLabels();
-
-    if (currentCards.length > 0) {
-      renderCards(currentCards);
-    }
+    applyCardHeightSetting(cardSizeSlider.value);
   });
+}
+
+if (tableViewport) {
+  tableViewport.addEventListener("wheel", handleHandWheelResize, { passive: false });
 }
 
 if (showCardBoundsToggle) {
@@ -5212,6 +5457,7 @@ if (handDepthShadowToggle) {
 
 window.addEventListener("resize", () => {
   if (currentCards.length === 0) {
+    syncHandViewportHeight();
     return;
   }
 
@@ -5226,8 +5472,10 @@ window.addEventListener("resize", () => {
 });
 
 async function initializeApp() {
+  setAdvancedControlsPanelOpen(false);
   initializeViewMode();
   initializeHandLayoutMode();
+  initializeCardSizeControl();
   initializeHandDirection();
   initializeHandSortingControls();
   initializeJokerSetupState();

@@ -14,259 +14,287 @@
       </header>
 
       <section class="top-grid">
-        <div class="box col-span-2">
-          <div class="box-title">Deck</div>
-          <select id="deck-select" aria-label="Select deck"></select>
-        </div>
-
-        <div class="box col-span-2">
-          <div class="box-title">Jokers</div>
-          <div class="option-group">
-            <label class="option-row">
-              <input id="jokers-enabled" type="checkbox" />
-              Include jokers
-            </label>
-          </div>
-          <div id="joker-controls" class="joker-controls mode-toggle__subcontrol--hidden">
-            <label class="joker-inline" for="joker-count">
-              Count
-              <input id="joker-count" type="number" min="1" max="4" step="1" value="2" />
-            </label>
-            <select id="joker-design-select" aria-label="Select joker design"></select>
-          </div>
-        </div>
-
-        <div class="box col-span-2">
+        <div class="box">
           <div class="box-title" id="card-count-label">Number of cards</div>
           <div class="left-content">
             <input id="card-count" type="number" min="1" max="52" value="13" />
           </div>
         </div>
 
-        <div class="box">
-          <div class="box-title">Card style</div>
-          <div class="option-group">
+        <div id="hand-sort-preset-box" class="box">
+          <div class="box-title">Sorting</div>
+          <div class="option-group option-group--inline">
             <label class="option-row">
-              <input type="radio" name="render-mode" value="unicode" />
-              Unicode symbols
+              <input type="radio" name="hand-sort-preset" value="auto_ranked" checked />
+              Auto sort
             </label>
             <label class="option-row">
-              <input type="radio" name="render-mode" value="image" checked />
-              Card face images (SVG)
-            </label>
-          </div>
-        </div>
-
-        <div class="box">
-          <div class="box-title">Table view</div>
-          <div class="option-group">
-            <label class="option-row">
-              <input type="radio" name="view-mode" value="matrix" />
-              Matrix
+              <input type="radio" name="hand-sort-preset" value="manual_suits_ranked" />
+              Auto rank (manual suit)
             </label>
             <label class="option-row">
-              <input type="radio" name="view-mode" value="hand" checked />
-              Hand
+              <input type="radio" name="hand-sort-preset" value="manual_free" />
+              Manual sort
             </label>
           </div>
         </div>
 
-        <div class="box col-span-2 debug-box">
-          <div class="box-title">Debug</div>
-          <div class="option-group">
-            <label class="option-row">
-              <input id="show-card-bounds" type="checkbox" />
-              Show card area bounds
-            </label>
-            <label class="option-row">
-              <input id="show-hand-curve" type="checkbox" />
-              Show hand curve
-            </label>
-          </div>
-        </div>
+        <div class="box advanced-trigger-box">
+          <div class="box-title">Controls</div>
+          <button
+            id="advanced-controls-toggle"
+            class="advanced-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="advanced-controls-panel"
+          >
+            Advanced pane
+          </button>
+          <section id="advanced-controls-panel" class="advanced-controls-panel" hidden>
+            <header class="advanced-controls-header">
+              <h2>Advanced controls</h2>
+              <button id="advanced-controls-close" type="button" class="advanced-close">Close</button>
+            </header>
+            <div class="advanced-grid">
+              <div class="box col-span-2">
+                <div class="box-title">Deck</div>
+                <select id="deck-select" aria-label="Select deck"></select>
+              </div>
 
-        <div id="card-size-box" class="box slider-box">
-          <div class="box-title">Card height</div>
-          <input
-            id="card-size-px"
-            type="range"
-            min="90"
-            max="400"
-            step="1"
-            value="300"
-          />
-          <div id="card-size-px-value" class="slider-value">300 px</div>
-        </div>
+              <div class="box col-span-2">
+                <div class="box-title">Jokers</div>
+                <div class="option-group">
+                  <label class="option-row">
+                    <input id="jokers-enabled" type="checkbox" />
+                    Include jokers
+                  </label>
+                </div>
+                <div id="joker-controls" class="joker-controls mode-toggle__subcontrol--hidden">
+                  <label class="joker-inline" for="joker-count">
+                    Count
+                    <input id="joker-count" type="number" min="1" max="4" step="1" value="2" />
+                  </label>
+                  <select id="joker-design-select" aria-label="Select joker design"></select>
+                </div>
+              </div>
 
-        <div id="hand-layout-mode-box" class="box hand-layout-control">
-          <div class="box-title">Hand layout</div>
-          <div class="option-group">
-            <label class="option-row">
-              <input type="radio" name="hand-layout-mode" value="classic" checked />
-              Classic
-            </label>
-            <label class="option-row">
-              <input type="radio" name="hand-layout-mode" value="demo" />
-              Demo
-            </label>
-          </div>
-        </div>
+              <div id="hand-sort-box" class="box hand-layout-control sort-legacy-controls" aria-hidden="true">
+                <select id="hand-suit-sort-mode" aria-label="Hand suit sort mode">
+                  <option value="auto" selected>Suit sort: auto</option>
+                  <option value="manual">Suit sort: manual</option>
+                </select>
+                <div class="option-group">
+                  <label class="option-row">
+                    <input id="rank-sort-enabled" type="checkbox" checked />
+                    Rank sort
+                  </label>
+                </div>
+              </div>
 
-        <div class="box hand-layout-control">
-          <div class="box-title">Hand direction</div>
-          <div class="option-group">
-            <label class="option-row">
-              <input type="radio" name="hand-direction" value="ltr" checked />
-              LTR
-            </label>
-            <label class="option-row">
-              <input type="radio" name="hand-direction" value="rtl" />
-              RTL
-            </label>
-          </div>
-        </div>
+              <div class="box hand-layout-control">
+                <div class="box-title">Rank policy</div>
+                <select id="hand-rank-policy" aria-label="Hand rank policy">
+                  <option value="high_low" selected>Rank: high to low</option>
+                  <option value="low_high">Rank: low to high</option>
+                </select>
+              </div>
 
-        <div id="hand-sort-box" class="box hand-layout-control">
-          <div class="box-title">Hand sorting</div>
-          <select id="hand-suit-sort-mode" aria-label="Hand suit sort mode">
-            <option value="auto" selected>Suit sort: auto</option>
-            <option value="manual">Suit sort: manual</option>
-          </select>
-          <div class="option-group">
-            <label class="option-row">
-              <input id="rank-sort-enabled" type="checkbox" checked />
-              Rank sort
-            </label>
-          </div>
-          <select id="hand-rank-policy" aria-label="Hand rank policy">
-            <option value="high_low" selected>Rank: high to low</option>
-            <option value="low_high">Rank: low to high</option>
-          </select>
-        </div>
+              <div class="box">
+                <div class="box-title">Card style</div>
+                <div class="option-group">
+                  <label class="option-row">
+                    <input type="radio" name="render-mode" value="unicode" />
+                    Unicode symbols
+                  </label>
+                  <label class="option-row">
+                    <input type="radio" name="render-mode" value="image" checked />
+                    Card face images (SVG)
+                  </label>
+                </div>
+              </div>
 
-        <div id="phi-deg-box" class="box slider-box hand-layout-control">
-          <div class="box-title">Max arch angle</div>
-          <input
-            id="phi-deg"
-            type="range"
-            min="0"
-            max="90"
-            step="0.5"
-            value="40"
-          />
-          <div id="phi-deg-value" class="slider-value">40.0</div>
-        </div>
+              <div class="box">
+                <div class="box-title">Table view</div>
+                <div class="option-group">
+                  <label class="option-row">
+                    <input type="radio" name="view-mode" value="matrix" />
+                    Matrix
+                  </label>
+                  <label class="option-row">
+                    <input type="radio" name="view-mode" value="hand" checked />
+                    Hand
+                  </label>
+                </div>
+              </div>
 
-        <div class="box slider-box hand-layout-control">
-          <div class="box-title">Max card visibility portion</div>
-          <input
-            id="visibility-factor"
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value="0.5"
-          />
-          <div id="visibility-factor-value" class="slider-value">0.50</div>
-        </div>
+              <div class="box col-span-2 debug-box">
+                <div class="box-title">Debug</div>
+                <div class="option-group">
+                  <label class="option-row">
+                    <input id="show-card-bounds" type="checkbox" />
+                    Show card area bounds
+                  </label>
+                  <label class="option-row">
+                    <input id="show-hand-curve" type="checkbox" />
+                    Show hand curve
+                  </label>
+                </div>
+              </div>
 
-        <div id="alpha-deg-box" class="box slider-box hand-layout-control">
-          <div id="alpha-deg-title" class="box-title">Max card angle</div>
-          <input
-            id="alpha-deg"
-            type="range"
-            min="0"
-            max="15"
-            step="0.1"
-            value="4"
-          />
-          <div id="alpha-deg-value" class="slider-value">4.0</div>
-        </div>
+              <div id="card-size-box" class="box slider-box">
+                <div class="box-title">Card height</div>
+                <input
+                  id="card-size-px"
+                  type="range"
+                  min="90"
+                  max="400"
+                  step="1"
+                  value="300"
+                />
+                <div id="card-size-px-value" class="slider-value">300 px</div>
+              </div>
 
-        <div id="demo-outer-drop-box" class="box slider-box hand-layout-control mode-toggle__subcontrol--hidden">
-          <div class="box-title">Outer drop</div>
-          <input
-            id="demo-outer-drop-pct"
-            type="range"
-            min="0"
-            max="5"
-            step="0.1"
-            value="2.0"
-          />
-          <div id="demo-outer-drop-pct-value" class="slider-value">2.0%</div>
-        </div>
+              <div id="hand-layout-mode-box" class="box hand-layout-control">
+                <div class="box-title">Hand layout</div>
+                <div class="option-group">
+                  <label class="option-row">
+                    <input type="radio" name="hand-layout-mode" value="classic" />
+                    Classic
+                  </label>
+                  <label class="option-row">
+                    <input type="radio" name="hand-layout-mode" value="demo" checked />
+                    Demo
+                  </label>
+                </div>
+              </div>
 
-        <div class="box slider-box hand-layout-control">
-          <div class="box-title">Fan duration (s)</div>
-          <input
-            id="fan-duration-sec"
-            type="range"
-            min="0.5"
-            max="2.0"
-            step="0.1"
-            value="1.0"
-          />
-          <div id="fan-duration-sec-value" class="slider-value">1.0</div>
-        </div>
+              <div id="phi-deg-box" class="box slider-box hand-layout-control">
+                <div class="box-title">Max arch angle</div>
+                <input
+                  id="phi-deg"
+                  type="range"
+                  min="0"
+                  max="90"
+                  step="0.5"
+                  value="40"
+                />
+                <div id="phi-deg-value" class="slider-value">40.0</div>
+              </div>
 
-        <div class="box slider-box hand-layout-control">
-          <div class="box-title">Fan step (ms)</div>
-          <input
-            id="fan-step-ms"
-            type="range"
-            min="10"
-            max="100"
-            step="5"
-            value="50"
-          />
-          <div id="fan-step-ms-value" class="slider-value">50</div>
-        </div>
+              <div class="box slider-box hand-layout-control">
+                <div class="box-title">Max card visibility portion</div>
+                <input
+                  id="visibility-factor"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.36"
+                />
+                <div id="visibility-factor-value" class="slider-value">0.36</div>
+              </div>
 
-        <div class="box hand-layout-control shadow-control--hidden">
-          <div class="box-title">Depth</div>
-          <div class="option-group">
-            <label class="option-row">
-              <input id="hand-depth-shadow-toggle" type="checkbox" />
-              Depth shadows
-            </label>
-          </div>
-        </div>
+              <div id="alpha-deg-box" class="box slider-box hand-layout-control">
+                <div id="alpha-deg-title" class="box-title">Max card angle</div>
+                <input
+                  id="alpha-deg"
+                  type="range"
+                  min="0"
+                  max="15"
+                  step="0.1"
+                  value="0.8"
+                />
+                <div id="alpha-deg-value" class="slider-value">0.8</div>
+              </div>
 
-        <div class="box slider-box hand-layout-control shadow-control--hidden">
-          <div class="box-title">Shadow strength</div>
-          <input
-            id="hand-depth-shadow-strength"
-            type="range"
-            min="0"
-            max="200"
-            step="5"
-            value="100"
-          />
-          <div id="hand-depth-shadow-strength-value" class="slider-value">100%</div>
-        </div>
+              <div id="demo-outer-drop-box" class="box slider-box hand-layout-control mode-toggle__subcontrol--hidden">
+                <div class="box-title">Outer drop</div>
+                <input
+                  id="demo-outer-drop-pct"
+                  type="range"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value="2.0"
+                />
+                <div id="demo-outer-drop-pct-value" class="slider-value">2.0%</div>
+              </div>
 
-        <div class="box hand-layout-control shadow-control--hidden">
-          <div class="box-title">Shadow direction</div>
-          <div
-            id="hand-depth-shadow-direction-clock"
-            class="shadow-clock"
-            role="radiogroup"
-            aria-label="Depth shadow direction"
-          ></div>
-          <div id="hand-depth-shadow-direction-value" class="slider-value">6 o'clock</div>
-        </div>
+              <div class="box slider-box hand-layout-control">
+                <div class="box-title">Fan duration (s)</div>
+                <input
+                  id="fan-duration-sec"
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.1"
+                  value="1.0"
+                />
+                <div id="fan-duration-sec-value" class="slider-value">1.0</div>
+              </div>
 
-        <div class="box hand-layout-control">
-          <div class="box-title">Animation</div>
-          <div class="option-group">
-            <label class="option-row">
-              <input id="fan-animate-toggle" type="checkbox" />
-              Fan animation
-            </label>
-          </div>
+              <div class="box slider-box hand-layout-control">
+                <div class="box-title">Fan step (ms)</div>
+                <input
+                  id="fan-step-ms"
+                  type="range"
+                  min="10"
+                  max="100"
+                  step="5"
+                  value="50"
+                />
+                <div id="fan-step-ms-value" class="slider-value">50</div>
+              </div>
+
+              <div class="box hand-layout-control shadow-control--hidden">
+                <div class="box-title">Depth</div>
+                <div class="option-group">
+                  <label class="option-row">
+                    <input id="hand-depth-shadow-toggle" type="checkbox" />
+                    Depth shadows
+                  </label>
+                </div>
+              </div>
+
+              <div class="box slider-box hand-layout-control shadow-control--hidden">
+                <div class="box-title">Shadow strength</div>
+                <input
+                  id="hand-depth-shadow-strength"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  value="100"
+                />
+                <div id="hand-depth-shadow-strength-value" class="slider-value">100%</div>
+              </div>
+
+              <div class="box hand-layout-control shadow-control--hidden">
+                <div class="box-title">Shadow direction</div>
+                <div
+                  id="hand-depth-shadow-direction-clock"
+                  class="shadow-clock"
+                  role="radiogroup"
+                  aria-label="Depth shadow direction"
+                ></div>
+                <div id="hand-depth-shadow-direction-value" class="slider-value">6 o'clock</div>
+              </div>
+
+              <div class="box hand-layout-control">
+                <div class="box-title">Animation</div>
+                <div class="option-group">
+                  <label class="option-row">
+                    <input id="fan-animate-toggle" type="checkbox" />
+                    Fan animation
+                  </label>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
 
         <p id="status" class="status col-span-4" aria-live="polite"></p>
+
       </section>
     </div>
 

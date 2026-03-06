@@ -117,6 +117,12 @@ Required controls:
 - `Rank sort`: toggle `on` / `off`
 - `Rank policy`: selector `high_low` / `low_high`
 
+Primary UI alias (compact mode) may expose a single preset selector:
+
+- `Auto sort` -> `suitSortMode=auto`, `rankSortEnabled=on`
+- `Auto rank (manual suit)` -> `suitSortMode=manual`, `rankSortEnabled=on`
+- `Manual sort` -> `rankSortEnabled=off` (and coerced `suitSortMode=manual`)
+
 UI state rules:
 
 - When `Rank sort` is `off`, set and lock `Suit sort` to `manual`.
