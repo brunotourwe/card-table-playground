@@ -1,6 +1,6 @@
 # Decision Log
 
-Last updated: 2026-03-05 (session 6)
+Last updated: 2026-03-08 (session 9)
 Status: Active
 
 ## Goal
@@ -418,3 +418,48 @@ Decision:
 - v1 drag is reorder-only; play/discard interaction is deferred.
 - Detailed interaction contract is defined in:
   - `docs/specs/hand-drag-interaction-v1.md`
+
+### CTP-DEC-033 Universal card-transition contract v1
+
+Status: Confirmed
+Date: 2026-03-08
+
+Decision:
+- Introduce a renderer-agnostic `CardTransition` contract as the shared animation language for current and future card games.
+- Keep state truth and visual motion explicitly decoupled via:
+  - `stateCommitPolicy` (authoritative game-state commit moment)
+  - `insertPolicy` (visual container insertion timing)
+- Model hidden/reveal behavior directly in contract (`visibilityPolicy`) instead of renderer-specific conventions.
+- Model multi-card deal/play choreography through multiple transition objects coordinated by:
+  - `transactionId`
+  - `concurrency` + `sequence`
+- Publish v1 schema and examples as reusable artifacts for other projects:
+  - `packages/card-transition-contract/artifacts/card-transition.v1.schema.json`
+  - `packages/card-transition-contract/artifacts/card-transition.v1.examples.json`
+  - `packages/card-transition-contract/artifacts/card-transition-contract-v1.md`
+
+### CTP-DEC-034 Authoritative event invariants and clipping boundary
+
+Status: Confirmed
+Date: 2026-03-08
+
+Decision:
+- Treat `flip`, `reveal`, and `commit` as authoritative events in `CardTransition`; local animation speed may vary, but event order/timing gates must stay consistent.
+- Reduced-motion variants may shorten/simplify motion, but must preserve authoritative event moments.
+- Keep playfield clipping/masking/overflow out of `CardTransition`.
+- Define clipping/masking/layer policy in a separate renderer contract:
+  - `docs/specs/zone-render-profile-v1.md`
+  - `docs/specs/schemas/zone-render-profile.v1.schema.json`
+- Mark the following as potential future extensions (not core v1):
+  - per-audience flip timing controls
+  - optional cross-pack `packInstanceId` convention for card identity
+
+### CTP-DEC-035 Transition contract source-of-truth location
+
+Status: Confirmed
+Date: 2026-03-08
+
+Decision:
+- Keep transition v1 contract artifacts only in `packages/card-transition-contract`.
+- Remove duplicate transition v1 contract files from `docs/specs` in app root.
+- Treat app-level transition contract files as compatibility consumers only, not source-of-truth.

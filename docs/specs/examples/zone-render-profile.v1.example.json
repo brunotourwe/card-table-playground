@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "ctp.zone-render-profile.v1",
+  "profileId": "table-default-v1",
+  "defaults": {
+    "clipMode": "none",
+    "overflowBehavior": "visible",
+    "clipPaddingPx": 0
+  },
+  "layers": [
+    {
+      "layerId": "table_base",
+      "zIndex": 0
+    },
+    {
+      "layerId": "trick_cards",
+      "zIndex": 30
+    },
+    {
+      "layerId": "hand_cards",
+      "zIndex": 40
+    }
+  ],
+  "zones": [
+    {
+      "zoneId": "table.playfield",
+      "layerId": "table_base",
+      "clipMode": "rounded_rect",
+      "overflowBehavior": "clip",
+      "clipRadiusPx": 18,
+      "clipPaddingPx": 0
+    },
+    {
+      "zoneId": "table.trick",
+      "layerId": "trick_cards",
+      "clipMode": "rounded_rect",
+      "overflowBehavior": "clip",
+      "clipRadiusPx": 18
+    },
+    {
+      "zoneId": "hand.p1",
+      "layerId": "hand_cards",
+      "clipMode": "none",
+      "overflowBehavior": "visible"
+    }
+  ]
+}

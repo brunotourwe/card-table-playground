@@ -1,0 +1,16 @@
+{
+  "name": "@ctp/card-transition-contract",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./catalog": "./catalog.js",
+    "./schema": "./artifacts/card-transition.v1.schema.json",
+    "./profile": "./artifacts/card-transition.v1.profile.json",
+    "./examples": "./artifacts/card-transition.v1.examples.json",
+    "./spec": "./artifacts/card-transition-contract-v1.md",
+    "./browser/catalog": "./browser/transition-feature-catalog.global.js"
+  }
+}

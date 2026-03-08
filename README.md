@@ -16,6 +16,38 @@ Open `index.html` directly in a browser — no server or build step required.
 
 For deck updates (adding cards, SVGs, metadata), use the deck pipeline commands below first.
 
+For isolated transition-contract testing, open `transition-lab.html`.
+For feature-id consistency checks (`A.n` catalog vs lab coverage), run `npm run transition:feature:test`.
+For frozen profile consistency checks (`must/should/future`), run `npm run transition:profile:test`.
+For non-visual contract conformance checks (gates/interrupts/block dealing), run `npm run transition:conformance:test`.
+For render-mode wiring checks (`legacy`/`contract` integration in app flows), run `npm run transition:integration:test`.
+For app integration fallback testing, use `?ctmode=contract` (default) or `?ctmode=legacy`.
+
+### Shared Contract Migration (2026-03-08)
+
+- This app now consumes CardTransition v1 via local package `@ctp/card-transition-contract`.
+- Source of truth for transition v1 artifacts is now:
+  - `packages/card-transition-contract/artifacts/`
+  - `packages/card-transition-contract/browser/transition-feature-catalog.global.js`
+- Local transition-contract copies were removed from `docs/specs` to prevent drift.
+- `transition-feature-catalog.js` is retained as a Node compatibility bridge and re-exports shared catalog content.
+- `transition-lab.html` now loads the shared browser catalog from `packages/card-transition-contract`.
+
+### Repo Layout For Shared Modules
+
+- `packages/card-transition-contract`: shared transition contract module (schema/profile/examples/spec/catalog + validator helper).
+- `apps/`: reserved for future multi-app layout. Current playable app stays at repository root.
+
+### Shared Module Development Flow
+
+1. Edit contract artifacts in `packages/card-transition-contract/artifacts/`.
+2. Run transition checks:
+   - `npm run transition:feature:test`
+   - `npm run transition:profile:test`
+   - `npm run transition:conformance:test`
+   - `npm run transition:integration:test`
+3. Validate full chain with `npm run transition:all:test`.
+
 ---
 
 ## Features
@@ -171,6 +203,26 @@ Both overlays update live as hand parameters change.
 ### Diagnostics Harness
 
 URL query parameters can lock slider values for repeatable visual debugging without touching the UI. Useful for filing and reproducing layout bugs.
+
+### Universal Card Transition Contract (v1)
+
+- Shared package (workspace local): `@ctp/card-transition-contract`
+- Source-of-truth artifacts live in:
+  - `packages/card-transition-contract/artifacts/card-transition-contract-v1.md`
+  - `packages/card-transition-contract/artifacts/card-transition.v1.schema.json`
+  - `packages/card-transition-contract/artifacts/card-transition.v1.profile.json`
+  - `packages/card-transition-contract/artifacts/card-transition.v1.examples.json`
+  - `packages/card-transition-contract/browser/transition-feature-catalog.global.js`
+- Tests in this app consume these artifacts through `@ctp/card-transition-contract`.
+
+### Zone Render Profile Contract (v1)
+
+- Renderer-bound zone/layer policy spec (clipping, overflow, masking):
+  - `docs/specs/zone-render-profile-v1.md`
+- JSON schema source of truth:
+  - `docs/specs/schemas/zone-render-profile.v1.schema.json`
+- Valid example:
+  - `docs/specs/examples/zone-render-profile.v1.example.json`
 
 ---
 

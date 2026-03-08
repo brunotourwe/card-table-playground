@@ -1,0 +1,967 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cardtable.dev/schemas/card-transition.v1.schema.json",
+  "title": "CardTransition v1",
+  "description": "Cross-project contract for deterministic card transition intents and motion metadata.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "transitionId",
+    "cardRef",
+    "action",
+    "from",
+    "to",
+    "timing",
+    "visibilityPolicy",
+    "stateCommitPolicy",
+    "interruptPolicy"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "ctp.card-transition.v1"
+    },
+    "transitionId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this visual transition instance."
+    },
+    "transactionId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Shared identifier across related transitions to keep clients in lockstep."
+    },
+    "seed": {
+      "type": "integer",
+      "description": "Optional deterministic seed for renderer-specific variation (jitter, micro-offsets)."
+    },
+    "cardRef": {
+      "$ref": "#/$defs/cardRef"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "draw",
+        "deal",
+        "play",
+        "discard",
+        "reveal",
+        "hide",
+        "move",
+        "collect",
+        "shuffle_emit"
+      ]
+    },
+    "from": {
+      "$ref": "#/$defs/zoneRef"
+    },
+    "to": {
+      "$ref": "#/$defs/zoneRef"
+    },
+    "timing": {
+      "$ref": "#/$defs/timing"
+    },
+    "path": {
+      "$ref": "#/$defs/path"
+    },
+    "orientation": {
+      "$ref": "#/$defs/orientation"
+    },
+    "visibilityPolicy": {
+      "$ref": "#/$defs/visibilityPolicy"
+    },
+    "stateCommitPolicy": {
+      "$ref": "#/$defs/stateCommitPolicy"
+    },
+    "insertPolicy": {
+      "$ref": "#/$defs/insertPolicy"
+    },
+    "sequence": {
+      "$ref": "#/$defs/sequence"
+    },
+    "concurrency": {
+      "$ref": "#/$defs/concurrency"
+    },
+    "audience": {
+      "$ref": "#/$defs/audience"
+    },
+    "interruptPolicy": {
+      "$ref": "#/$defs/interruptPolicy"
+    },
+    "accessibility": {
+      "$ref": "#/$defs/accessibility"
+    },
+    "events": {
+      "$ref": "#/$defs/events"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Project-specific non-authoritative metadata for logs or diagnostics.",
+      "additionalProperties": true
+    },
+    "xExtensions": {
+      "type": "object",
+      "description": "Forward-compatible extension bag for unknown consumers.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "cardRef": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "instanceId"
+          ],
+          "properties": {
+            "instanceId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "deckId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rank": {
+              "type": "string",
+              "minLength": 1
+            },
+            "suit": {
+              "type": "string",
+              "minLength": 1
+            },
+            "xExtensions": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      ]
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      }
+    },
+    "zoneRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "zoneId"
+      ],
+      "properties": {
+        "zoneId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Abstract zone identity, never a CSS selector. Example: hand.p1"
+        },
+        "seatId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slotId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "anchor": {
+          "type": "string",
+          "enum": [
+            "center",
+            "top",
+            "right",
+            "bottom",
+            "left",
+            "top_left",
+            "top_right",
+            "bottom_left",
+            "bottom_right",
+            "custom"
+          ],
+          "default": "center"
+        },
+        "anchorVector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            "y": {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            }
+          }
+        },
+        "offsetPx": {
+          "$ref": "#/$defs/point"
+        },
+        "coordinateSpace": {
+          "type": "string",
+          "enum": [
+            "zone_local",
+            "table",
+            "viewport",
+            "world"
+          ],
+          "default": "table"
+        },
+        "xExtensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "anchor": {
+                "const": "custom"
+              }
+            },
+            "required": [
+              "anchor"
+            ]
+          },
+          "then": {
+            "required": [
+              "anchorVector"
+            ]
+          }
+        }
+      ]
+    },
+    "phaseTiming": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "durationMs"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "durationMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "delayMs": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0
+        },
+        "easing": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "durationMs"
+      ],
+      "properties": {
+        "durationMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "delayMs": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0
+        },
+        "easing": {
+          "type": "string",
+          "minLength": 1,
+          "default": "cubic-bezier(0.22, 0.8, 0.24, 1)"
+        },
+        "speedProfile": {
+          "type": "string",
+          "enum": [
+            "slow",
+            "medium",
+            "fast",
+            "custom"
+          ]
+        },
+        "normalizeByDistance": {
+          "type": "boolean",
+          "default": false
+        },
+        "minDurationMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "maxDurationMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "phases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/phaseTiming"
+          }
+        }
+      }
+    },
+    "path": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "linear",
+            "arc",
+            "bezier",
+            "spline",
+            "teleport",
+            "custom"
+          ],
+          "default": "linear"
+        },
+        "controlPoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point"
+          }
+        },
+        "arcHeightPx": {
+          "type": "number"
+        },
+        "jitterPx": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0
+        },
+        "xExtensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "orientation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "startTiltDeg": {
+          "type": "number"
+        },
+        "endTiltDeg": {
+          "type": "number"
+        },
+        "startRotateDeg": {
+          "type": "number"
+        },
+        "endRotateDeg": {
+          "type": "number"
+        },
+        "spinTurns": {
+          "type": "number"
+        },
+        "xExtensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "audienceVisibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audienceId",
+        "face"
+      ],
+      "properties": {
+        "audienceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "face": {
+          "type": "string",
+          "enum": [
+            "face_up",
+            "face_down"
+          ]
+        }
+      }
+    },
+    "flipAnimation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Visual flip tween settings. Authoritative flip/reveal gate is still defined by visibility mode/progress/phase.",
+      "properties": {
+        "durationMs": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0
+        },
+        "easing": {
+          "type": "string",
+          "minLength": 1,
+          "default": "linear"
+        },
+        "axis": {
+          "type": "string",
+          "enum": [
+            "y",
+            "x"
+          ],
+          "default": "y"
+        },
+        "revealAtProgress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.5
+        }
+      }
+    },
+    "visibilityPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "face_up_always",
+            "face_down_always",
+            "face_down_until_arrival",
+            "flip_on_start",
+            "flip_on_complete",
+            "flip_at_progress",
+            "flip_at_phase"
+          ]
+        },
+        "startFace": {
+          "type": "string",
+          "enum": [
+            "face_up",
+            "face_down"
+          ]
+        },
+        "endFace": {
+          "type": "string",
+          "enum": [
+            "face_up",
+            "face_down"
+          ]
+        },
+        "flipProgress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "flipPhase": {
+          "type": "string",
+          "minLength": 1
+        },
+        "flipAnimation": {
+          "$ref": "#/$defs/flipAnimation"
+        },
+        "perAudience": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/audienceVisibility"
+          }
+        },
+        "xExtensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "flip_at_progress"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "flipProgress"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "flip_at_phase"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "flipPhase"
+            ]
+          }
+        }
+      ]
+    },
+    "stateCommitPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "on_start",
+            "on_progress",
+            "on_phase",
+            "on_complete",
+            "external"
+          ]
+        },
+        "progress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "phase": {
+          "type": "string",
+          "minLength": 1
+        },
+        "waitForAck": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "on_progress"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "progress"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "on_phase"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "phase"
+            ]
+          }
+        }
+      ]
+    },
+    "insertPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "none",
+            "ghost_until_commit",
+            "insert_on_start",
+            "insert_on_progress",
+            "insert_on_complete"
+          ]
+        },
+        "containerZoneId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "indexStrategy": {
+          "type": "string",
+          "enum": [
+            "append",
+            "prepend",
+            "absolute",
+            "relative_before",
+            "relative_after",
+            "renderer_decides"
+          ],
+          "default": "renderer_decides"
+        },
+        "absoluteIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "relativeCardId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "not": {
+                  "const": "none"
+                }
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "containerZoneId"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "indexStrategy": {
+                "const": "absolute"
+              }
+            },
+            "required": [
+              "indexStrategy"
+            ]
+          },
+          "then": {
+            "required": [
+              "absoluteIndex"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "indexStrategy": {
+                "enum": [
+                  "relative_before",
+                  "relative_after"
+                ]
+              }
+            },
+            "required": [
+              "indexStrategy"
+            ]
+          },
+          "then": {
+            "required": [
+              "relativeCardId"
+            ]
+          }
+        }
+      ]
+    },
+    "sequence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "orderIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "staggerMs": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0
+        },
+        "batchSize": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "waveIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "packetId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional logical packet identifier for transitions that should travel as one deal block before splitting."
+        },
+        "packetSlotIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Card position inside packet order."
+        },
+        "holdFormationUntilProgress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0,
+          "description": "Visual progress threshold before packet cards spread to their final offsets."
+        },
+        "formationCompactness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0,
+          "description": "How much per-card offset remains visible while packet is held (0 = stacked, 1 = fully spread)."
+        },
+        "xExtensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "concurrency": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "groupId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "independent",
+            "simultaneous",
+            "staggered",
+            "sequential",
+            "wave"
+          ],
+          "default": "independent"
+        },
+        "maxParallel": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "barrierBefore": {
+          "type": "boolean",
+          "default": false
+        },
+        "barrierAfter": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "audience": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "public",
+            "owner_only",
+            "hidden",
+            "custom"
+          ],
+          "default": "public"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "includeIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "excludeIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "visibility": {
+                "const": "owner_only"
+              }
+            },
+            "required": [
+              "visibility"
+            ]
+          },
+          "then": {
+            "required": [
+              "ownerId"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "visibility": {
+                "const": "custom"
+              }
+            },
+            "required": [
+              "visibility"
+            ]
+          },
+          "then": {
+            "required": [
+              "includeIds"
+            ]
+          }
+        }
+      ]
+    },
+    "interruptPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "cancel",
+            "complete_fast",
+            "snap_to_end",
+            "ignore"
+          ]
+        },
+        "completeFastDurationMs": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "complete_fast"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "completeFastDurationMs"
+            ]
+          }
+        }
+      ]
+    },
+    "accessibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Accessibility transforms may adjust motion, but must not change authoritative flip/reveal/commit event moments.",
+      "properties": {
+        "respectReducedMotion": {
+          "type": "boolean",
+          "default": true
+        },
+        "reducedMotionMode": {
+          "type": "string",
+          "enum": [
+            "none",
+            "shorten",
+            "fade",
+            "snap"
+          ],
+          "default": "shorten"
+        },
+        "reducedDurationMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "maxDurationMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "preserveAuthoritativeEvents": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, reduced-motion handling must preserve authoritative flip/reveal/commit gates."
+        }
+      }
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "emit": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "on_start",
+              "on_phase_start",
+              "on_flip",
+              "on_commit",
+              "on_complete",
+              "on_interrupt"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "channel": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

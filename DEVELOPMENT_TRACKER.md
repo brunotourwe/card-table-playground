@@ -1,6 +1,6 @@
 # Development Tracker
 
-Last updated: 2026-03-06 (session 9)
+Last updated: 2026-03-08 (session 26)
 Source: matrix/hand roadmap and current implementation status.
 
 ## Tracking Model
@@ -244,6 +244,8 @@ Meta fields on each item:
   Meta: ID:CTP-WS03-03-6-05 | A:2026-03-05 | U:2026-03-05 | T:POC
 - [x] Replace primary hand sorting controls with a single 3-state preset selector (`auto sort`, `auto rank (manual suit)`, `manual sort`) mapped to existing effective modes.
   Meta: ID:CTP-WS03-03-6-06 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] In `Whist` mode with ranked sorting enabled (`auto sort` or `auto rank (manual suit)`), add one visual card-step gap between adjacent same-color suit groups (`hearts/diamonds`, `clubs/spades`), while leaving `manual sort` unchanged.
+  Meta: ID:CTP-WS03-03-6-07 | A:2026-03-07 | U:2026-03-07 | T:POC
 
 ### 03.7 Drag Reorder Interaction v1
 - [x] Define v1 hand drag interaction spec (hover eject, card drag in `rank off`, modifier-based suit drag in `rank on`).
@@ -282,6 +284,76 @@ Meta fields on each item:
 ### 04.1 Motion Controls
 - [ ] Add animation duration selector and bind duration to transitions.
   Meta: ID:CTP-WS04-04-1-01 | A:2026-02-25 | U:2026-02-25 | T:POC
+- [x] Define a universal cross-project `CardTransition` v1 contract with schema, examples, and integration guidance.
+  Meta: ID:CTP-WS04-04-1-02 | A:2026-03-08 | U:2026-03-08 | T:POC
+- [x] Clarify `CardTransition` authoritative event invariants (`flip/reveal/commit`) and publish separate `Zone Render Profile` v1 contract for clipping/layer policies.
+  Meta: ID:CTP-WS04-04-1-03 | A:2026-03-08 | U:2026-03-08 | T:POC
+- [x] Add feature-flagged app integration for `CardTransition` runtime (`?ctmode=legacy|contract`) and lock it with a dedicated integration test for mapped TapTap/Whist flows.
+  Meta: ID:CTP-WS04-04-1-04 | A:2026-03-08 | U:2026-03-08 | T:POC
+
+### 04.3 Trick Play from Hand (Backlog)
+- [x] Define trick-play v1 spec: single-click play intent, per-deal dynamic player-count mapping, lead-suit winner rules with joker override, seat marker model, and staged trick animation timeline.
+  Meta: ID:CTP-WS04-04-3-01 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Implement trick-phase state scaffolding and interaction lock gates (`deal_idle`, `trick_lock`, `trick_playing`, `trick_resolve`, `trick_collect`) with drag/hover/wheel guards.
+  Meta: ID:CTP-WS04-04-3-02 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add seat marker rendering and anchor layout for `4/3/2/1` player modes inside the table canvas.
+  Meta: ID:CTP-WS04-04-3-03 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Implement play intent arbitration with existing drag threshold so short click plays and threshold crossing still triggers drag.
+  Meta: ID:CTP-WS04-04-3-04 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Implement trick animation pipeline (human play flight, bot staggered flights, winner highlight, collect sweep, cleanup).
+  Meta: ID:CTP-WS04-04-3-05 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Implement winner resolver v1: joker beats all, last joker beats earlier joker, else highest rank in lead suit wins.
+  Meta: ID:CTP-WS04-04-3-06 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [ ] Add requested-count stale indicator for the card-count input (italic + tooltip) after first play; clear on re-deal.
+  Meta: ID:CTP-WS04-04-3-07 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add trick animation speed selector in Advanced pane with `slow`, `medium`, and `fast` presets (`fast` default).
+  Meta: ID:CTP-WS04-04-3-08 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Bind all trick-play phase timings (human flight, bot flight/stagger, winner highlight, collect, cleanup) to the selected speed profile.
+  Meta: ID:CTP-WS04-04-3-09 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add small randomized landing tilt for played trick cards (human and bots), clamped for readability.
+  Meta: ID:CTP-WS04-04-3-10 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Fix bot seat marker positions: replace percentage-based anchors with a fixed `SEAT_BORDER_MARGIN_PX` pixel offset from each seat's border, eliminating aspect-ratio-driven inconsistencies.
+  Meta: ID:CTP-WS04-04-3-11 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Fix played card slot positions: derive each trick-slot anchor from the direction vector between table center and the corresponding seat anchor, at distance = half the current card height, replacing hardcoded pixel offsets.
+  Meta: ID:CTP-WS04-04-3-12 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add a side debug readout for trick geometry: mouse XY (table-local), table-center XY, and landed played-card XY per seat (`S/W/N/E`) to support visual placement debugging.
+  Meta: ID:CTP-WS04-04-3-13 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Pause trick flow after landing/highlight and require explicit click to continue sweep collection, so card landing positions can be inspected before stack motion.
+  Meta: ID:CTP-WS04-04-3-14 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Align trick/debug coordinate frame to the orange table canvas by using the table section as the playfield reference and clamping mouse debug coordinates to playfield bounds.
+  Meta: ID:CTP-WS04-04-3-15 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Fix trick-card pose drift by enforcing explicit sprite dimensions + center transform origin and by measuring landed card centers from rendered bounding boxes.
+  Meta: ID:CTP-WS04-04-3-16 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Conceal bot trick cards during launch flight and reveal their face only on table contact (landing) to prevent pre-flight face exposure.
+  Meta: ID:CTP-WS04-04-3-17 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Change bot trick sequencing to strict per-bot steps (`animate -> reveal`) so bot reveals happen immediately after each individual landing instead of grouped after overlapping flights.
+  Meta: ID:CTP-WS04-04-3-21 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add `fly from edge` bot launch option: bot cards spawn at the table edge along their seat direction and fly to center slots before reveal.
+  Meta: ID:CTP-WS04-04-3-22 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add advanced-pane dropdown for bot trick play style (`from seat`, `fly from edge`) and persist selection in session storage.
+  Meta: ID:CTP-WS04-04-3-23 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Make `fly from edge` visually distinct by launching bot cards fully outside the table boundary (card-size-aware offset) before in-flight entry.
+  Meta: ID:CTP-WS04-04-3-24 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Refine `fly from edge` visuals: keep bot card face visible during flight and clip trick-layer rendering to table bounds so only the in-table card portion is visible while entering.
+  Meta: ID:CTP-WS04-04-3-25 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Fix trick-play runtime lock regression in bot sequential flow (undefined reveal flag): ensure bot reveal class removal is scope-safe and force phase reset on sequence exceptions.
+  Meta: ID:CTP-WS04-04-3-26 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add selectable play mechanic mode (`Whist`, `TapTap`) in Advanced pane and persist selection in session storage.
+  Meta: ID:CTP-WS04-04-3-27 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Implement TapTap center piles (`draw pile` + `played pile`) rendered side-by-side at table center, with live counts/top-card readout and turn metadata.
+  Meta: ID:CTP-WS04-04-3-28 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Implement TapTap turn flow with direction control (`clockwise` / `counter-clockwise`), optional human draw on turn, and random bot draw behavior before random bot play.
+  Meta: ID:CTP-WS04-04-3-29 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [x] Add TapTap draw/play card motion animations for all seats: human and bots should animate both draw-from-pile and play-to-pile actions (not instant state jumps).
+  Meta: ID:CTP-WS04-04-3-30 | A:2026-03-06 | U:2026-03-07 | T:POC
+- [x] Upgrade TapTap center piles to visually read as real card stacks (multi-card layered depth for both draw pile and played pile), not just counters.
+  Meta: ID:CTP-WS04-04-3-31 | A:2026-03-06 | U:2026-03-07 | T:POC
+- [ ] Add bot launch-origin animation variants (`virtual_hand`, `grow_from_point`, `side_lane`) behind a strategy flag so visual style can change without rewriting trick-flow state.
+  Meta: ID:CTP-WS04-04-3-18 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [ ] Add configurable bot reveal timing (`on_launch`, `near_landing`, `on_landing`) with safe default `on_landing` to preserve no-pre-reveal behavior.
+  Meta: ID:CTP-WS04-04-3-19 | A:2026-03-06 | U:2026-03-06 | T:POC
+- [ ] Add optional bot flight path profiles (linear, mild arc, seat-biased side arc) and per-profile tuning (`launch scale`, `peak offset`, `reveal easing`) for future polish passes.
+  Meta: ID:CTP-WS04-04-3-20 | A:2026-03-06 | U:2026-03-06 | T:POC
 
 ### 04.2 Mobile Strategy Controls
 - [ ] Add mobile strategy selector (`swipe-scroll`, `pinch-zoom`, `fixed-fit`).
@@ -321,3 +393,31 @@ Meta fields on each item:
 ### 06.3 Deck Orientation Metadata (Backlog)
 - [ ] Distinguish poker-style (2-corner index) vs bridge-style (4-corner index) decks in deck metadata and use it to gate hand-direction behavior.
   Meta: ID:CTP-WS06-06-3-01 | A:2026-03-06 | U:2026-03-06 | T:POC
+
+## WS-07 Shared Contract Packaging and Repo Layout
+
+### 07.1 Shared Package Foundation
+- [x] Create in-repo shared module `packages/card-transition-contract` and expose `schema`, `profile`, `examples`, and `catalog`.
+  Meta: ID:CTP-WS07-07-1-01 | A:2026-03-08 | U:2026-03-08 | T:POC
+- [x] Add shared helper API (`validateCardTransition`, `validateExamples`) to support lightweight contract checks in app scripts.
+  Meta: ID:CTP-WS07-07-1-02 | A:2026-03-08 | U:2026-03-08 | T:POC
+- [x] Publish browser-ready global catalog artifact in shared module for `transition-lab.html`.
+  Meta: ID:CTP-WS07-07-1-03 | A:2026-03-08 | U:2026-03-08 | T:POC
+
+### 07.2 App Integration and Migration
+- [x] Switch app test scripts to consume transition artifacts through `@ctp/card-transition-contract`.
+  Meta: ID:CTP-WS07-07-2-01 | A:2026-03-08 | U:2026-03-08 | T:POC
+- [x] Keep compatibility bridge `transition-feature-catalog.js` while moving actual catalog source-of-truth to shared package.
+  Meta: ID:CTP-WS07-07-2-02 | A:2026-03-08 | U:2026-03-08 | T:POC
+- [x] Update `transition-lab.html` to load shared browser catalog from `packages/card-transition-contract`.
+  Meta: ID:CTP-WS07-07-2-03 | A:2026-03-08 | U:2026-03-08 | T:POC
+- [x] Remove local transition contract copies from `docs/specs` (`spec`, `schema`, `profile`, `examples`) to avoid dual-source drift.
+  Meta: ID:CTP-WS07-07-2-04 | A:2026-03-08 | U:2026-03-08 | T:POC
+
+### 07.3 Repo and Delivery Hygiene
+- [x] Add repository `apps/` scaffold note and document root-app + `packages/*` model for future multi-app expansion.
+  Meta: ID:CTP-WS07-07-3-01 | A:2026-03-08 | U:2026-03-08 | T:POC
+- [x] Expand README with migration notes, shared module paths, and explicit transition test flow.
+  Meta: ID:CTP-WS07-07-3-02 | A:2026-03-08 | U:2026-03-08 | T:POC
+- [x] Re-run transition test suite after migration and lock green baseline (`feature`, `profile`, `conformance`, `integration`).
+  Meta: ID:CTP-WS07-07-3-03 | A:2026-03-08 | U:2026-03-08 | T:POC

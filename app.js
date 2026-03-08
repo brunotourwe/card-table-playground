@@ -14,6 +14,8 @@ const jokerControls = document.getElementById("joker-controls");
 const jokerCountInput = document.getElementById("joker-count");
 const jokerDesignSelect = document.getElementById("joker-design-select");
 const statusMessage = document.getElementById("status");
+const trickDebugPanel = document.getElementById("trick-debug-panel");
+const trickDebugText = document.getElementById("trick-debug-text");
 const renderModeInputs = document.querySelectorAll(
   "input[name=\"render-mode\"]"
 );
@@ -53,6 +55,12 @@ const fanDurationSliderValue = document.getElementById("fan-duration-sec-value")
 const fanStepMsSlider = document.getElementById("fan-step-ms");
 const fanStepMsSliderValue = document.getElementById("fan-step-ms-value");
 const fanAnimateToggle = document.getElementById("fan-animate-toggle");
+const trickAnimationSpeedSelect = document.getElementById("trick-animation-speed");
+const trickBotAnimationModeSelect = document.getElementById("trick-bot-animation-mode");
+const playMechanicModeSelect = document.getElementById("play-mechanic-mode");
+const tapTapTurnDirectionSelect = document.getElementById("taptap-turn-direction");
+const tapTapLogDownloadButton = document.getElementById("taptap-log-download");
+const tapTapLogState = document.getElementById("taptap-log-state");
 
 let currentCards = [];
 let currentViewMode = "hand";
@@ -67,6 +75,11 @@ const JOKERS_ENABLED_STORAGE_KEY = "ctp:jokers-enabled";
 const JOKER_COUNT_STORAGE_KEY = "ctp:joker-count";
 const JOKER_SELECTED_STORAGE_KEY = "ctp:selected-joker-id";
 const JOKER_LAST_SELECTED_STORAGE_KEY = "ctp:last-selected-joker-id";
+const TRICK_ANIMATION_SPEED_STORAGE_KEY = "ctp:trick-animation-speed";
+const TRICK_BOT_ANIMATION_MODE_STORAGE_KEY = "ctp:trick-bot-animation-mode";
+const PLAY_MECHANIC_MODE_STORAGE_KEY = "ctp:play-mechanic-mode";
+const TAPTAP_TURN_DIRECTION_STORAGE_KEY = "ctp:taptap-turn-direction";
+const CARD_TRANSITION_RENDER_MODE_STORAGE_KEY = "ctp:card-transition-render-mode";
 const HAND_DEPTH_SHADOW_STORAGE_KEY = "ctp:hand-depth-shadow";
 const HAND_DEPTH_SHADOW_STRENGTH_STORAGE_KEY = "ctp:hand-depth-shadow-strength";
 const HAND_DEPTH_SHADOW_DIRECTION_STORAGE_KEY = "ctp:hand-depth-shadow-direction";
@@ -155,6 +168,7 @@ const MAX_FAN_DURATION_SEC = 2.0;
 const DEFAULT_FAN_STEP_MS = 50;
 const MIN_FAN_STEP_MS = 10;
 const MAX_FAN_STEP_MS = 100;
+const CARD_ASPECT_RATIO = 0.6923076923;
 const HAND_HOVER_EJECT_RATIO = 0.07;
 const CARD_DRAG_START_THRESHOLD_PX = 7;
 const CARD_DRAG_DIRECTION_DEADZONE_PX = 2;
@@ -162,6 +176,68 @@ const CARD_HEIGHT_WHEEL_STEP_PX = 8;
 const HAND_BOTTOM_CLIP_MAX_RATIO = 0.5;
 const SUIT_DRAG_GAP_SLOT_COUNT = 2;
 const SUIT_DRAG_SHADOW_MODEL_ENABLED = true;
+const TRICK_PHASE_DEAL_IDLE = "deal_idle";
+const TRICK_PHASE_TRICK_LOCK = "trick_lock";
+const TRICK_PHASE_TRICK_PLAYING = "trick_playing";
+const TRICK_PHASE_TRICK_RESOLVE = "trick_resolve";
+const TRICK_PHASE_TRICK_COLLECT = "trick_collect";
+const LOCKED_TRICK_PHASES = new Set([
+  TRICK_PHASE_TRICK_LOCK,
+  TRICK_PHASE_TRICK_PLAYING,
+  TRICK_PHASE_TRICK_RESOLVE,
+  TRICK_PHASE_TRICK_COLLECT
+]);
+const DEFAULT_PLAY_MECHANIC_MODE = "whist";
+const DEFAULT_TAPTAP_TURN_DIRECTION = "clockwise";
+const DEFAULT_CARD_TRANSITION_RENDER_MODE = "contract";
+const DEFAULT_TRICK_ANIMATION_SPEED_PRESET = "fast";
+const DEFAULT_TRICK_BOT_ANIMATION_MODE = "seat_launch";
+const TAPTAP_ACTION_LOG_FILENAME = "taptap-action-log.txt";
+const TRICK_ANIMATION_SPEED_PRESETS = Object.freeze({
+  slow: Object.freeze({
+    humanFlightMs: 330,
+    botFlightMs: 300,
+    botStaggerMs: 220,
+    highlightMs: 340,
+    collectMs: 340,
+    cleanupMs: 140,
+    tableTiltJitterDeg: 2.8
+  }),
+  medium: Object.freeze({
+    humanFlightMs: 250,
+    botFlightMs: 230,
+    botStaggerMs: 170,
+    highlightMs: 280,
+    collectMs: 280,
+    cleanupMs: 120,
+    tableTiltJitterDeg: 2.3
+  }),
+  fast: Object.freeze({
+    humanFlightMs: 180,
+    botFlightMs: 170,
+    botStaggerMs: 130,
+    highlightMs: 220,
+    collectMs: 220,
+    cleanupMs: 100,
+    tableTiltJitterDeg: 1.9
+  })
+});
+const TAPTAP_ANIMATION_SPEED_DURATION_MULTIPLIERS = Object.freeze({
+  fast: 1,
+  medium: 2,
+  slow: 4
+});
+const BOT_SEAT_VISUALS = {
+  W: { color: "#7bc5c8", label: "W" },
+  N: { color: "#d2c27c", label: "N" },
+  E: { color: "#d48ab8", label: "E" }
+};
+const HUMAN_SEAT_VISUAL = { xPct: 50, yPct: 92, label: "S" };
+const SEAT_BORDER_MARGIN_PX = 24;
+const TRICK_FLIGHT_EASING = "cubic-bezier(0.22, 0.8, 0.24, 1)";
+const TRICK_COLLECT_EASING = "cubic-bezier(0.16, 0.84, 0.24, 1)";
+const CARD_TRANSITION_SCHEMA_VERSION = "ctp.card-transition.v1";
+const CARD_TRANSITION_LOG_LIMIT = 240;
 const URL_PARAMS = new URLSearchParams(window.location.search);
 const TEST_MODE = URL_PARAMS.get("test") === "1";
 const TEST_SCENARIO = URL_PARAMS.get("scenario") ?? "";
@@ -179,6 +255,500 @@ let hoveredGroupKey = null;
 let manualCardOrder = null;
 let manualSuitOrder = null;
 let cardDragState = null;
+let trickPhase = TRICK_PHASE_DEAL_IDLE;
+let dealRequestedCount = DEFAULT_CARD_COUNT;
+let playerCountForDeal = 4;
+let lastPlayIntentCardId = null;
+let lastPlayIntentAtIso = null;
+let playIntentStatusTimeoutId = null;
+let trickAnimationRunToken = 0;
+let trickAnimationSpeedPreset = DEFAULT_TRICK_ANIMATION_SPEED_PRESET;
+let trickBotAnimationMode = DEFAULT_TRICK_BOT_ANIMATION_MODE;
+let playMechanicMode = DEFAULT_PLAY_MECHANIC_MODE;
+let tapTapTurnDirection = DEFAULT_TAPTAP_TURN_DIRECTION;
+let trickSweepContinueCleanup = null;
+let trickSweepContinueResolve = null;
+let trickDebugMouseX = null;
+let trickDebugMouseY = null;
+let trickDebugTableCenterX = null;
+let trickDebugTableCenterY = null;
+let trickDebugPlayedAnchorsBySeatId = new Map();
+let tapTapDrawPile = [];
+let tapTapPlayedPile = [];
+let tapTapHandsBySeatId = new Map();
+let tapTapTurnSeatId = "S";
+let tapTapTurnHasDrawn = false;
+let tapTapStateActive = false;
+let tapTapBotRunToken = 0;
+let tapTapBotRunActive = false;
+let tapTapActionRunToken = 0;
+let tapTapActionInFlight = false;
+let tapTapCenterPilesRenderToken = 0;
+let tapTapPileAnchorsByKind = new Map();
+let tapTapActionLogLines = [];
+let tapTapActionLogBlobUrl = null;
+let cardTransitionRenderMode = DEFAULT_CARD_TRANSITION_RENDER_MODE;
+let mappedCardTransitionLogEntries = [];
+let mappedCardTransitionIdCounter = 0;
+let mappedCardTransitionTransactionCounter = 0;
+
+function isFiniteAnchor(anchor) {
+  return Boolean(anchor) &&
+    Number.isFinite(anchor.x) &&
+    Number.isFinite(anchor.y);
+}
+
+function setTapTapPileAnchor(kind, anchor) {
+  if (typeof kind !== "string" || kind.length === 0) {
+    return;
+  }
+
+  if (!isFiniteAnchor(anchor)) {
+    tapTapPileAnchorsByKind.delete(kind);
+    return;
+  }
+
+  tapTapPileAnchorsByKind.set(kind, { x: anchor.x, y: anchor.y });
+}
+
+function getTapTapPileAnchorFromCache(kind) {
+  const cachedAnchor = tapTapPileAnchorsByKind.get(kind);
+  return isFiniteAnchor(cachedAnchor) ? cachedAnchor : null;
+}
+
+function resetTapTapPileAnchors() {
+  tapTapPileAnchorsByKind = new Map();
+}
+
+function getTapTapActionLogEntryCount() {
+  if (!Array.isArray(tapTapActionLogLines) || tapTapActionLogLines.length === 0) {
+    return 0;
+  }
+
+  return tapTapActionLogLines.reduce((count, line) => (
+    typeof line === "string" && line.startsWith("[") ? count + 1 : count
+  ), 0);
+}
+
+function updateTapTapLogControls() {
+  const isTapTapHandMode = isTapTapMode() && getViewMode() === "hand";
+  const entryCount = getTapTapActionLogEntryCount();
+  const hasLogDownload = Boolean(tapTapActionLogBlobUrl);
+
+  if (tapTapLogDownloadButton) {
+    tapTapLogDownloadButton.disabled = !isTapTapHandMode || !hasLogDownload;
+  }
+
+  if (tapTapLogState) {
+    if (!isTapTapHandMode) {
+      tapTapLogState.textContent = "TapTap mode only";
+      return;
+    }
+
+    tapTapLogState.textContent = hasLogDownload
+      ? `Entries: ${entryCount}`
+      : "No log yet";
+  }
+}
+
+function refreshTapTapActionLogArtifacts() {
+  const logText = Array.isArray(tapTapActionLogLines)
+    ? tapTapActionLogLines.join("\n")
+    : "";
+  window.__CTP_TAPTAP_ACTION_LOG__ = logText;
+
+  if (
+    tapTapActionLogBlobUrl &&
+    typeof URL !== "undefined" &&
+    typeof URL.revokeObjectURL === "function"
+  ) {
+    URL.revokeObjectURL(tapTapActionLogBlobUrl);
+  }
+  tapTapActionLogBlobUrl = null;
+
+  if (
+    typeof Blob !== "undefined" &&
+    typeof URL !== "undefined" &&
+    typeof URL.createObjectURL === "function"
+  ) {
+    const logBlob = new Blob([logText], { type: "text/plain;charset=utf-8" });
+    tapTapActionLogBlobUrl = URL.createObjectURL(logBlob);
+  }
+
+  window.__CTP_TAPTAP_ACTION_LOG_URL__ = tapTapActionLogBlobUrl;
+  window.__CTP_DOWNLOAD_TAPTAP_ACTION_LOG__ = () => {
+    if (!tapTapActionLogBlobUrl || typeof document === "undefined") {
+      return false;
+    }
+
+    const anchor = document.createElement("a");
+    anchor.href = tapTapActionLogBlobUrl;
+    anchor.download = TAPTAP_ACTION_LOG_FILENAME;
+    anchor.rel = "noopener";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    return true;
+  };
+  updateTapTapLogControls();
+}
+
+function resetTapTapActionLog(reasonLabel = "deal initialized") {
+  const reasonText = typeof reasonLabel === "string" && reasonLabel.trim().length > 0
+    ? reasonLabel.trim()
+    : "deal initialized";
+  tapTapActionLogLines = [
+    "TapTap action log",
+    `Session started: ${new Date().toISOString()}`,
+    `Reason: ${reasonText}`,
+    ""
+  ];
+  refreshTapTapActionLogArtifacts();
+}
+
+function appendTapTapActionLogEntry({
+  seatId,
+  action,
+  card = null,
+  note = ""
+}) {
+  const actionText = typeof action === "string" && action.trim().length > 0
+    ? action.trim()
+    : "action";
+  if (!Array.isArray(tapTapActionLogLines) || tapTapActionLogLines.length === 0) {
+    resetTapTapActionLog("log auto-initialized");
+  }
+
+  const actorLabel = formatSeatTurnLabel(seatId);
+  const cardText = card ? getCardPlayLabel(card) : "";
+  const noteText = typeof note === "string" && note.trim().length > 0
+    ? ` (${note.trim()})`
+    : "";
+  const cardSuffix = cardText.length > 0 ? ` ${cardText}` : "";
+  tapTapActionLogLines.push(
+    `[${new Date().toISOString()}] ${actorLabel} ${actionText}${cardSuffix}${noteText}`
+  );
+  refreshTapTapActionLogArtifacts();
+}
+
+function nextMappedCardTransitionId(prefix = "transition") {
+  mappedCardTransitionIdCounter += 1;
+  const safePrefix = typeof prefix === "string" && prefix.length > 0 ? prefix : "transition";
+  return `${safePrefix}-${String(mappedCardTransitionIdCounter).padStart(6, "0")}`;
+}
+
+function nextMappedCardTransitionTransactionId(scope = "tx") {
+  mappedCardTransitionTransactionCounter += 1;
+  const safeScope = typeof scope === "string" && scope.length > 0 ? scope : "tx";
+  return `${safeScope}-${String(mappedCardTransitionTransactionCounter).padStart(6, "0")}`;
+}
+
+function createCardTransitionCardRef(card, fallbackCardId = "") {
+  if (card && typeof card === "object" && typeof card.cardId === "string" && card.cardId.length > 0) {
+    const ref = { instanceId: card.cardId };
+    if (activeDeck && typeof activeDeck.deckId === "string" && activeDeck.deckId.length > 0) {
+      ref.deckId = activeDeck.deckId;
+    }
+    if (typeof card.rank === "string" && card.rank.length > 0) {
+      ref.rank = card.rank;
+    }
+    if (typeof card.suit === "string" && card.suit.length > 0) {
+      ref.suit = card.suit;
+    }
+    return ref;
+  }
+
+  if (typeof fallbackCardId === "string" && fallbackCardId.length > 0) {
+    return fallbackCardId;
+  }
+
+  return "card-token";
+}
+
+function createCardTransitionZoneRef({
+  zoneId,
+  seatId,
+  anchor = "center",
+  offsetPx
+}) {
+  const ref = { zoneId };
+  if (typeof seatId === "string" && seatId.length > 0) {
+    ref.seatId = seatId;
+  }
+  if (typeof anchor === "string" && anchor.length > 0) {
+    ref.anchor = anchor;
+  }
+  if (offsetPx && Number.isFinite(offsetPx.x) && Number.isFinite(offsetPx.y)) {
+    ref.offsetPx = { x: offsetPx.x, y: offsetPx.y };
+  }
+  return ref;
+}
+
+function mapGameEventToCardTransition(event) {
+  if (!event || typeof event !== "object") {
+    return null;
+  }
+
+  const fromZoneId = typeof event.fromZoneId === "string" ? event.fromZoneId : "";
+  const toZoneId = typeof event.toZoneId === "string" ? event.toZoneId : "";
+  if (fromZoneId.length === 0 || toZoneId.length === 0) {
+    return null;
+  }
+
+  const action = typeof event.action === "string" && event.action.length > 0
+    ? event.action
+    : "move";
+  const sourceScope = typeof event.sourceScope === "string" && event.sourceScope.length > 0
+    ? event.sourceScope
+    : "game";
+  const seatScope = typeof event.seatId === "string" && event.seatId.length > 0
+    ? event.seatId
+    : "seat";
+  const timingDurationMs = Number.isFinite(event.durationMs)
+    ? Math.max(0, Math.round(event.durationMs))
+    : 180;
+  const easing = typeof event.easing === "string" && event.easing.length > 0
+    ? event.easing
+    : TRICK_FLIGHT_EASING;
+
+  const transition = {
+    schemaVersion: CARD_TRANSITION_SCHEMA_VERSION,
+    transitionId: nextMappedCardTransitionId(`${sourceScope}-${action}`),
+    transactionId: typeof event.transactionId === "string" && event.transactionId.length > 0
+      ? event.transactionId
+      : nextMappedCardTransitionTransactionId(`${sourceScope}-${seatScope}-${action}`),
+    cardRef: createCardTransitionCardRef(event.card, event.cardId),
+    action,
+    from: createCardTransitionZoneRef({
+      zoneId: fromZoneId,
+      seatId: event.fromSeatId,
+      anchor: event.fromAnchor,
+      offsetPx: event.fromOffsetPx
+    }),
+    to: createCardTransitionZoneRef({
+      zoneId: toZoneId,
+      seatId: event.toSeatId,
+      anchor: event.toAnchor,
+      offsetPx: event.toOffsetPx
+    }),
+    timing: {
+      durationMs: timingDurationMs,
+      easing
+    },
+    visibilityPolicy: event.visibilityPolicy && typeof event.visibilityPolicy === "object"
+      ? event.visibilityPolicy
+      : { mode: "face_up_always" },
+    stateCommitPolicy: event.stateCommitPolicy && typeof event.stateCommitPolicy === "object"
+      ? event.stateCommitPolicy
+      : { mode: "on_complete" },
+    interruptPolicy: event.interruptPolicy && typeof event.interruptPolicy === "object"
+      ? event.interruptPolicy
+      : { mode: "cancel" }
+  };
+
+  if (event.path && typeof event.path === "object") {
+    transition.path = event.path;
+  }
+  if (event.orientation && typeof event.orientation === "object") {
+    transition.orientation = event.orientation;
+  }
+  if (event.insertPolicy && typeof event.insertPolicy === "object") {
+    transition.insertPolicy = event.insertPolicy;
+  }
+  if (event.sequence && typeof event.sequence === "object") {
+    transition.sequence = event.sequence;
+  }
+  if (event.concurrency && typeof event.concurrency === "object") {
+    transition.concurrency = event.concurrency;
+  }
+  if (event.audience && typeof event.audience === "object") {
+    transition.audience = event.audience;
+  }
+  if (event.accessibility && typeof event.accessibility === "object") {
+    transition.accessibility = event.accessibility;
+  }
+  if (event.events && typeof event.events === "object") {
+    transition.events = event.events;
+  }
+  if (event.metadata && typeof event.metadata === "object") {
+    transition.metadata = event.metadata;
+  }
+
+  return transition;
+}
+
+function appendMappedCardTransitionLogEntry(source, transition) {
+  if (!transition || typeof transition !== "object") {
+    return;
+  }
+
+  mappedCardTransitionLogEntries.push({
+    atIso: new Date().toISOString(),
+    source: typeof source === "string" && source.length > 0 ? source : "game",
+    transition
+  });
+
+  if (mappedCardTransitionLogEntries.length > CARD_TRANSITION_LOG_LIMIT) {
+    mappedCardTransitionLogEntries.splice(
+      0,
+      mappedCardTransitionLogEntries.length - CARD_TRANSITION_LOG_LIMIT
+    );
+  }
+
+  window.__CTP_CARD_TRANSITION_LOG__ = mappedCardTransitionLogEntries.slice();
+  window.__CTP_LAST_CARD_TRANSITION__ = transition;
+}
+
+function resetMappedCardTransitionLog() {
+  mappedCardTransitionLogEntries = [];
+  window.__CTP_CARD_TRANSITION_LOG__ = [];
+  window.__CTP_LAST_CARD_TRANSITION__ = null;
+}
+
+function emitMappedCardTransitionFromGameEvent(event, source = "game") {
+  try {
+    const transition = mapGameEventToCardTransition(event);
+    if (!transition) {
+      return null;
+    }
+    appendMappedCardTransitionLogEntry(source, transition);
+    return transition;
+  } catch (error) {
+    console.warn("CardTransition mapper error:", error);
+    return null;
+  }
+}
+
+function normalizeCardTransitionRenderMode(value) {
+  return value === "contract" ? "contract" : "legacy";
+}
+
+function getStoredCardTransitionRenderMode() {
+  return normalizeCardTransitionRenderMode(
+    getStoredString(CARD_TRANSITION_RENDER_MODE_STORAGE_KEY)
+  );
+}
+
+function setStoredCardTransitionRenderMode(value) {
+  const normalized = normalizeCardTransitionRenderMode(value);
+  setStoredStringOrClear(CARD_TRANSITION_RENDER_MODE_STORAGE_KEY, normalized);
+}
+
+function setCardTransitionRenderMode(value, persist = true) {
+  const normalized = normalizeCardTransitionRenderMode(value);
+  cardTransitionRenderMode = normalized;
+  if (persist) {
+    setStoredCardTransitionRenderMode(normalized);
+  }
+  window.__CTP_CARD_TRANSITION_RENDER_MODE__ = normalized;
+  return normalized;
+}
+
+function initializeCardTransitionRenderMode() {
+  const urlMode = URL_PARAMS.get("ctmode");
+  const hasUrlOverride = typeof urlMode === "string" && urlMode.length > 0;
+  const resolved = hasUrlOverride
+    ? normalizeCardTransitionRenderMode(urlMode)
+    : getStoredCardTransitionRenderMode();
+  setCardTransitionRenderMode(resolved, true);
+}
+
+function isContractTransitionRenderMode() {
+  return cardTransitionRenderMode === "contract";
+}
+
+function resolveTransitionRuntimeTiming(transition, fallback) {
+  const fallbackDurationMs = Number.isFinite(fallback?.durationMs)
+    ? Math.max(0, fallback.durationMs)
+    : 0;
+  const fallbackEasing = typeof fallback?.easing === "string" && fallback.easing.length > 0
+    ? fallback.easing
+    : TRICK_FLIGHT_EASING;
+
+  if (!isContractTransitionRenderMode() || !transition || typeof transition !== "object") {
+    return { durationMs: fallbackDurationMs, easing: fallbackEasing };
+  }
+
+  const mappedDurationMs = Number(transition.timing?.durationMs);
+  const mappedEasing = transition.timing?.easing;
+  return {
+    durationMs: Number.isFinite(mappedDurationMs) ? Math.max(0, mappedDurationMs) : fallbackDurationMs,
+    easing: typeof mappedEasing === "string" && mappedEasing.length > 0 ? mappedEasing : fallbackEasing
+  };
+}
+
+function resolveTransitionRuntimeOrientation(transition, fallback) {
+  const startTiltFallback = Number.isFinite(fallback?.startTiltDeg) ? fallback.startTiltDeg : 0;
+  const endTiltFallback = Number.isFinite(fallback?.endTiltDeg) ? fallback.endTiltDeg : startTiltFallback;
+
+  if (!isContractTransitionRenderMode() || !transition || typeof transition !== "object") {
+    return { startTiltDeg: startTiltFallback, endTiltDeg: endTiltFallback };
+  }
+
+  const startTiltMapped = Number(transition.orientation?.startTiltDeg);
+  const endTiltMapped = Number(transition.orientation?.endTiltDeg);
+  return {
+    startTiltDeg: Number.isFinite(startTiltMapped) ? startTiltMapped : startTiltFallback,
+    endTiltDeg: Number.isFinite(endTiltMapped) ? endTiltMapped : endTiltFallback
+  };
+}
+
+function resolveTransitionRuntimeStartConcealed(transition, fallbackConcealed) {
+  if (!isContractTransitionRenderMode() || !transition || typeof transition !== "object") {
+    return Boolean(fallbackConcealed);
+  }
+
+  const policy = transition.visibilityPolicy || {};
+  if (policy.startFace === "face_down") {
+    return true;
+  }
+  if (policy.startFace === "face_up") {
+    return false;
+  }
+
+  return (
+    policy.mode === "face_down_always" ||
+    policy.mode === "face_down_until_arrival" ||
+    policy.mode === "flip_on_complete" ||
+    policy.mode === "flip_at_progress" ||
+    policy.mode === "flip_at_phase"
+  );
+}
+
+function resolveTransitionRuntimeEndsFaceUp(transition, fallbackFaceUp = true) {
+  if (!isContractTransitionRenderMode() || !transition || typeof transition !== "object") {
+    return Boolean(fallbackFaceUp);
+  }
+
+  const policy = transition.visibilityPolicy || {};
+  if (policy.endFace === "face_up") {
+    return true;
+  }
+  if (policy.endFace === "face_down") {
+    return false;
+  }
+  if (policy.mode === "face_down_always") {
+    return false;
+  }
+  if (policy.mode === "face_up_always") {
+    return true;
+  }
+  if (
+    policy.mode === "face_down_until_arrival" ||
+    policy.mode === "flip_on_start" ||
+    policy.mode === "flip_on_complete" ||
+    policy.mode === "flip_at_progress" ||
+    policy.mode === "flip_at_phase"
+  ) {
+    return true;
+  }
+
+  return Boolean(fallbackFaceUp);
+}
+
+window.__CTP_MAP_GAME_EVENT_TO_CARD_TRANSITION__ = mapGameEventToCardTransition;
+window.__CTP_EMIT_MAPPED_CARD_TRANSITION__ = emitMappedCardTransitionFromGameEvent;
+window.__CTP_SET_CARD_TRANSITION_RENDER_MODE__ = (value) => setCardTransitionRenderMode(value, true);
 
 function getDeckMaxCount() {
   const baseCount =
@@ -207,6 +777,2173 @@ function updateCardCountRangeLabel() {
   if (currentValue > maxCount) {
     cardCountInput.value = `${maxCount}`;
   }
+}
+
+function getPlayerCountForDealCount(cardCount) {
+  const safeCount = Number.isInteger(cardCount) ? cardCount : 0;
+  if (safeCount <= 0) {
+    return 4;
+  }
+
+  if (safeCount <= 13) {
+    return 4;
+  }
+
+  if (safeCount <= 17) {
+    return 3;
+  }
+
+  if (safeCount <= 26) {
+    return 2;
+  }
+
+  return 1;
+}
+
+function getActiveBotSeatIds(currentPlayerCount = playerCountForDeal) {
+  if (currentPlayerCount === 4) {
+    return ["W", "N", "E"];
+  }
+
+  if (currentPlayerCount === 3) {
+    return ["W", "E"];
+  }
+
+  if (currentPlayerCount === 2) {
+    return ["N"];
+  }
+
+  return [];
+}
+
+function isSupportedPlayMechanicMode(value) {
+  return value === "whist" || value === "taptap";
+}
+
+function isSupportedTapTapTurnDirection(value) {
+  return value === "clockwise" || value === "counter_clockwise";
+}
+
+function isTapTapMode() {
+  return playMechanicMode === "taptap";
+}
+
+function getStoredPlayMechanicMode() {
+  const storedValue = getStoredString(PLAY_MECHANIC_MODE_STORAGE_KEY);
+  return isSupportedPlayMechanicMode(storedValue)
+    ? storedValue
+    : DEFAULT_PLAY_MECHANIC_MODE;
+}
+
+function setStoredPlayMechanicMode(value) {
+  if (isSupportedPlayMechanicMode(value)) {
+    setStoredStringOrClear(PLAY_MECHANIC_MODE_STORAGE_KEY, value);
+    return;
+  }
+
+  setStoredStringOrClear(PLAY_MECHANIC_MODE_STORAGE_KEY, DEFAULT_PLAY_MECHANIC_MODE);
+}
+
+function getStoredTapTapTurnDirection() {
+  const storedValue = getStoredString(TAPTAP_TURN_DIRECTION_STORAGE_KEY);
+  return isSupportedTapTapTurnDirection(storedValue)
+    ? storedValue
+    : DEFAULT_TAPTAP_TURN_DIRECTION;
+}
+
+function setStoredTapTapTurnDirection(value) {
+  if (isSupportedTapTapTurnDirection(value)) {
+    setStoredStringOrClear(TAPTAP_TURN_DIRECTION_STORAGE_KEY, value);
+    return;
+  }
+
+  setStoredStringOrClear(TAPTAP_TURN_DIRECTION_STORAGE_KEY, DEFAULT_TAPTAP_TURN_DIRECTION);
+}
+
+function stopTapTapBotLoop() {
+  tapTapBotRunToken += 1;
+  tapTapBotRunActive = false;
+}
+
+function cancelTapTapActionAnimations() {
+  tapTapActionRunToken += 1;
+  tapTapActionInFlight = false;
+  clearTrickLayer();
+}
+
+function clearTapTapState() {
+  stopTapTapBotLoop();
+  cancelTapTapActionAnimations();
+  resetTapTapPileAnchors();
+  resetTapTapActionLog("TapTap state cleared");
+  tapTapDrawPile = [];
+  tapTapPlayedPile = [];
+  tapTapHandsBySeatId = new Map();
+  tapTapTurnSeatId = "S";
+  tapTapTurnHasDrawn = false;
+  tapTapStateActive = false;
+}
+
+function setPlayMechanicMode(nextMode, persist = true) {
+  const resolvedMode = isSupportedPlayMechanicMode(nextMode)
+    ? nextMode
+    : DEFAULT_PLAY_MECHANIC_MODE;
+  playMechanicMode = resolvedMode;
+
+  if (playMechanicModeSelect) {
+    playMechanicModeSelect.value = resolvedMode;
+  }
+
+  if (resolvedMode !== "taptap") {
+    clearTapTapState();
+  }
+
+  if (persist) {
+    setStoredPlayMechanicMode(resolvedMode);
+  }
+}
+
+function setTapTapTurnDirection(nextDirection, persist = true) {
+  const resolvedDirection = isSupportedTapTapTurnDirection(nextDirection)
+    ? nextDirection
+    : DEFAULT_TAPTAP_TURN_DIRECTION;
+  tapTapTurnDirection = resolvedDirection;
+
+  if (tapTapTurnDirectionSelect) {
+    tapTapTurnDirectionSelect.value = resolvedDirection;
+  }
+
+  if (persist) {
+    setStoredTapTapTurnDirection(resolvedDirection);
+  }
+}
+
+function initializePlayMechanicControls() {
+  setPlayMechanicMode(getStoredPlayMechanicMode(), false);
+  setTapTapTurnDirection(getStoredTapTapTurnDirection(), false);
+}
+
+function getTapTapSeatOrder() {
+  const activeBots = getActiveBotSeatIds(playerCountForDeal);
+  const playerCount = activeBots.length + 1;
+  let clockwiseSeatOrder = ["S"];
+
+  if (playerCount === 4) {
+    clockwiseSeatOrder = ["S", "W", "N", "E"];
+  } else if (playerCount === 3) {
+    clockwiseSeatOrder = ["S", "W", "E"];
+  } else if (playerCount === 2) {
+    clockwiseSeatOrder = ["S", "N"];
+  }
+
+  if (tapTapTurnDirection !== "counter_clockwise") {
+    return clockwiseSeatOrder;
+  }
+
+  return [clockwiseSeatOrder[0], ...clockwiseSeatOrder.slice(1).reverse()];
+}
+
+function getTapTapSeatHand(seatId) {
+  const hand = tapTapHandsBySeatId.get(seatId);
+  return Array.isArray(hand) ? hand : [];
+}
+
+function syncTapTapTurnLock() {
+  if (!isTapTapMode() || !tapTapStateActive || getViewMode() !== "hand") {
+    return;
+  }
+
+  if (tapTapTurnSeatId === "S") {
+    setTrickPhase(TRICK_PHASE_DEAL_IDLE);
+    return;
+  }
+
+  setTrickPhase(TRICK_PHASE_TRICK_LOCK);
+}
+
+function getTapTapNextSeatId(currentSeatId) {
+  const seatOrder = getTapTapSeatOrder();
+  if (!Array.isArray(seatOrder) || seatOrder.length === 0) {
+    return "S";
+  }
+
+  const currentIndex = seatOrder.indexOf(currentSeatId);
+  if (currentIndex < 0) {
+    return seatOrder[0];
+  }
+
+  return seatOrder[(currentIndex + 1) % seatOrder.length];
+}
+
+function formatSeatTurnLabel(seatId) {
+  if (seatId === "S") {
+    return "You";
+  }
+
+  return `Bot ${seatId}`;
+}
+
+function areAllTapTapHandsEmpty() {
+  for (const hand of tapTapHandsBySeatId.values()) {
+    if (Array.isArray(hand) && hand.length > 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isTapTapGameExhausted() {
+  return tapTapStateActive && tapTapDrawPile.length === 0 && areAllTapTapHandsEmpty();
+}
+
+function setTapTapTurnSeat(seatId) {
+  tapTapTurnSeatId = seatId;
+  tapTapTurnHasDrawn = false;
+  syncTapTapTurnLock();
+}
+
+function advanceTapTapTurn() {
+  const nextSeatId = getTapTapNextSeatId(tapTapTurnSeatId);
+  setTapTapTurnSeat(nextSeatId);
+  return nextSeatId;
+}
+
+function initializeTapTapStateForDeal(totalDealtCards) {
+  const runtimeDeck = buildRuntimeDeckCards();
+  const shuffledDeck = shuffleDeck(runtimeDeck).map((card, dealIndex) => createDealtCard(card, dealIndex));
+  const safeTotalCount = Math.max(0, Math.min(totalDealtCards, shuffledDeck.length));
+  const seatOrder = getTapTapSeatOrder();
+  tapTapHandsBySeatId = new Map(seatOrder.map((seatId) => [seatId, []]));
+
+  for (let dealIndex = 0; dealIndex < safeTotalCount; dealIndex += 1) {
+    const seatId = seatOrder[dealIndex % seatOrder.length];
+    const hand = getTapTapSeatHand(seatId);
+    hand.push(shuffledDeck[dealIndex]);
+    tapTapHandsBySeatId.set(seatId, hand);
+  }
+
+  tapTapDrawPile = shuffledDeck.slice(safeTotalCount);
+  tapTapPlayedPile = [];
+  tapTapStateActive = true;
+  tapTapTurnHasDrawn = false;
+  tapTapTurnSeatId = seatOrder[0] ?? "S";
+  stopTapTapBotLoop();
+  currentCards = getTapTapSeatHand("S").slice();
+  syncTapTapTurnLock();
+  resetTapTapActionLog(`new deal (${safeTotalCount} cards)`);
+  resetMappedCardTransitionLog();
+}
+
+async function handleTapTapHumanDrawIntent() {
+  if (!isTapTapMode() || !tapTapStateActive || getViewMode() !== "hand") {
+    return false;
+  }
+
+  if (tapTapActionInFlight) {
+    setStatus("TapTap: action in progress.");
+    return false;
+  }
+
+  if (tapTapTurnSeatId !== "S") {
+    setStatus("TapTap: wait for your turn.");
+    return false;
+  }
+
+  if (tapTapTurnHasDrawn) {
+    setStatus("TapTap: you already drew this turn. Play a card or skip drawing next turn.");
+    return false;
+  }
+
+  if (tapTapDrawPile.length === 0) {
+    setStatus("TapTap: draw pile is empty.");
+    return false;
+  }
+
+  const previewCard = tapTapDrawPile[tapTapDrawPile.length - 1];
+  if (!previewCard) {
+    return false;
+  }
+
+  const drawStartAnchor = await resolveTapTapPileTopAnchor("draw");
+  if (!drawStartAnchor) {
+    setStatus("TapTap: draw stack anchor unavailable.");
+    return false;
+  }
+
+  const actionToken = beginTapTapActionAnimation();
+  const isRunCurrent = () => isTapTapActionAnimationCurrent(actionToken);
+  const drawTransactionId = nextMappedCardTransitionTransactionId("taptap-S-draw");
+
+  try {
+    const durations = getTapTapActionDurations();
+    const drawFlightTransition = emitMappedCardTransitionFromGameEvent({
+      sourceScope: "taptap",
+      seatId: "S",
+      transactionId: drawTransactionId,
+      action: "draw",
+      card: previewCard,
+      fromZoneId: "deck.main",
+      fromSeatId: "S",
+      toZoneId: "hand.S.hover",
+      toSeatId: "S",
+      durationMs: durations.drawMs,
+      visibilityPolicy: { mode: "face_down_always" },
+      stateCommitPolicy: { mode: "on_complete" },
+      interruptPolicy: { mode: "cancel" },
+      events: { emit: ["on_start", "on_commit", "on_complete"], channel: "taptap" },
+      metadata: { actorSeatId: "S", phase: "draw_flight" }
+    }, "taptap:human-draw-flight");
+    const drawFlightTiming = resolveTransitionRuntimeTiming(drawFlightTransition, {
+      durationMs: durations.drawMs,
+      easing: TRICK_FLIGHT_EASING
+    });
+    const drawFlightOrientation = resolveTransitionRuntimeOrientation(drawFlightTransition, {
+      startTiltDeg: 0,
+      endTiltDeg: 0
+    });
+    const drawFlightConcealed = resolveTransitionRuntimeStartConcealed(drawFlightTransition, true);
+
+    await animateTapTapCardTransfer({
+      card: previewCard,
+      startAnchor: drawStartAnchor,
+      endAnchor: getTapTapHandCenterHoverAnchor(),
+      concealed: drawFlightConcealed,
+      startTiltDeg: drawFlightOrientation.startTiltDeg,
+      endTiltDeg: drawFlightOrientation.endTiltDeg,
+      durationMs: drawFlightTiming.durationMs,
+      easing: drawFlightTiming.easing,
+      isRunCurrent
+    });
+
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    const drawnCard = tapTapDrawPile.pop();
+    if (!drawnCard) {
+      return false;
+    }
+
+    const drawRevealTransition = emitMappedCardTransitionFromGameEvent({
+      sourceScope: "taptap",
+      seatId: "S",
+      transactionId: drawTransactionId,
+      action: "reveal",
+      card: previewCard,
+      fromZoneId: "hand.S.hover",
+      fromSeatId: "S",
+      toZoneId: "hand.S.hover",
+      toSeatId: "S",
+      durationMs: durations.revealMs,
+      visibilityPolicy: {
+        mode: "flip_on_complete",
+        startFace: "face_down",
+        endFace: "face_up",
+        flipAnimation: {
+          durationMs: durations.revealMs,
+          easing: "ease-out",
+          axis: "y",
+          revealAtProgress: 0.5
+        }
+      },
+      stateCommitPolicy: { mode: "on_complete" },
+      interruptPolicy: { mode: "cancel" },
+      events: { emit: ["on_start", "on_flip", "on_complete"], channel: "taptap" },
+      metadata: { actorSeatId: "S", phase: "draw_reveal" }
+    }, "taptap:human-draw-reveal");
+    const drawRevealTiming = resolveTransitionRuntimeTiming(drawRevealTransition, {
+      durationMs: durations.revealMs,
+      easing: TRICK_FLIGHT_EASING
+    });
+
+    await animateTapTapDrawRevealInHand(previewCard, {
+      durationMs: drawRevealTiming.durationMs,
+      isRunCurrent
+    });
+
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    const hand = getTapTapSeatHand("S");
+    hand.push(drawnCard);
+    tapTapHandsBySeatId.set("S", hand);
+    tapTapTurnHasDrawn = true;
+    currentCards = hand.slice();
+    await renderCards(currentCards);
+
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    const drawInsertTransition = emitMappedCardTransitionFromGameEvent({
+      sourceScope: "taptap",
+      seatId: "S",
+      transactionId: drawTransactionId,
+      action: "move",
+      card: drawnCard,
+      fromZoneId: "hand.S.hover",
+      fromSeatId: "S",
+      toZoneId: "hand.S",
+      toSeatId: "S",
+      durationMs: durations.insertMs,
+      visibilityPolicy: { mode: "face_up_always" },
+      stateCommitPolicy: { mode: "on_complete" },
+      interruptPolicy: { mode: "cancel" },
+      insertPolicy: {
+        mode: "insert_on_complete",
+        containerZoneId: "hand.S",
+        indexStrategy: "append"
+      },
+      events: { emit: ["on_start", "on_commit", "on_complete"], channel: "taptap" },
+      metadata: { actorSeatId: "S", phase: "draw_insert" }
+    }, "taptap:human-draw-insert");
+    const drawInsertTiming = resolveTransitionRuntimeTiming(drawInsertTransition, {
+      durationMs: durations.insertMs,
+      easing: TRICK_FLIGHT_EASING
+    });
+
+    await animateTapTapDrawSlideIntoHand(drawnCard.cardId, {
+      durationMs: drawInsertTiming.durationMs,
+      isRunCurrent
+    });
+
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    setStatus(`TapTap: you drew ${getCardPlayLabel(drawnCard)}. Play a card.`);
+    appendTapTapActionLogEntry({
+      seatId: "S",
+      action: "drew",
+      card: drawnCard
+    });
+    return true;
+  } finally {
+    clearTrickLayer();
+    endTapTapActionAnimation(actionToken);
+  }
+}
+
+async function runTapTapBotTurns() {
+  if (
+    !isTapTapMode() ||
+    !tapTapStateActive ||
+    tapTapTurnSeatId === "S" ||
+    tapTapBotRunActive ||
+    tapTapActionInFlight
+  ) {
+    return;
+  }
+
+  const runToken = tapTapBotRunToken + 1;
+  tapTapBotRunToken = runToken;
+  tapTapBotRunActive = true;
+
+  try {
+    while (
+      runToken === tapTapBotRunToken &&
+      isTapTapMode() &&
+      tapTapStateActive &&
+      tapTapTurnSeatId !== "S"
+    ) {
+      const seatId = tapTapTurnSeatId;
+      const hand = getTapTapSeatHand(seatId);
+      const botLabel = formatSeatTurnLabel(seatId);
+      const shouldDrawRandomly = tapTapDrawPile.length > 0 && Math.random() < 0.5;
+
+      if (shouldDrawRandomly || (hand.length === 0 && tapTapDrawPile.length > 0)) {
+        const previewCard = tapTapDrawPile[tapTapDrawPile.length - 1];
+        if (previewCard) {
+          const drawStartAnchor = await resolveTapTapPileTopAnchor("draw");
+          if (!drawStartAnchor) {
+            const drawnCard = tapTapDrawPile.pop();
+            if (drawnCard) {
+              hand.push(drawnCard);
+              tapTapHandsBySeatId.set(seatId, hand);
+              setStatus(`TapTap: ${botLabel} drew a card.`);
+              appendTapTapActionLogEntry({
+                seatId,
+                action: "drew",
+                card: drawnCard,
+                note: "fallback-no-anchor"
+              });
+              updateDebugOverlays();
+            }
+            await waitForMs(90);
+            continue;
+          }
+
+          const actionToken = beginTapTapActionAnimation();
+          const isAnimationCurrent = () =>
+            runToken === tapTapBotRunToken && isTapTapActionAnimationCurrent(actionToken);
+          const drawTransactionId = nextMappedCardTransitionTransactionId(`taptap-${seatId}-draw`);
+
+          try {
+            const durations = getTapTapActionDurations();
+            const botDrawTransition = emitMappedCardTransitionFromGameEvent({
+              sourceScope: "taptap",
+              seatId,
+              transactionId: drawTransactionId,
+              action: "draw",
+              card: previewCard,
+              fromZoneId: "deck.main",
+              fromSeatId: seatId,
+              toZoneId: `hand.${seatId}.edge`,
+              toSeatId: seatId,
+              durationMs: durations.drawMs,
+              visibilityPolicy: { mode: "face_down_always" },
+              stateCommitPolicy: { mode: "on_complete" },
+              interruptPolicy: { mode: "cancel" },
+              events: { emit: ["on_start", "on_commit", "on_complete"], channel: "taptap" },
+              metadata: { actorSeatId: seatId, phase: "bot_draw" }
+            }, "taptap:bot-draw");
+            const botDrawTiming = resolveTransitionRuntimeTiming(botDrawTransition, {
+              durationMs: durations.drawMs,
+              easing: TRICK_FLIGHT_EASING
+            });
+            const botDrawOrientation = resolveTransitionRuntimeOrientation(botDrawTransition, {
+              startTiltDeg: 0,
+              endTiltDeg: getBotSeatBaseTiltDeg(seatId)
+            });
+            const botDrawConcealed = resolveTransitionRuntimeStartConcealed(botDrawTransition, true);
+
+            await animateTapTapCardTransfer({
+              card: previewCard,
+              startAnchor: drawStartAnchor,
+              endAnchor: getTapTapBotEdgeSeatAnchor(seatId),
+              concealed: botDrawConcealed,
+              startTiltDeg: botDrawOrientation.startTiltDeg,
+              endTiltDeg: botDrawOrientation.endTiltDeg,
+              durationMs: botDrawTiming.durationMs,
+              easing: botDrawTiming.easing,
+              isRunCurrent: isAnimationCurrent
+            });
+
+            if (!isAnimationCurrent()) {
+              return;
+            }
+
+            const drawnCard = tapTapDrawPile.pop();
+            if (drawnCard) {
+              hand.push(drawnCard);
+              tapTapHandsBySeatId.set(seatId, hand);
+              setStatus(`TapTap: ${botLabel} drew a card.`);
+              appendTapTapActionLogEntry({
+                seatId,
+                action: "drew",
+                card: drawnCard
+              });
+              updateDebugOverlays();
+            }
+
+            await waitForMs(90);
+          } finally {
+            clearTrickLayer();
+            endTapTapActionAnimation(actionToken);
+          }
+        }
+      }
+
+      if (hand.length > 0) {
+        const playIndex = Math.floor(Math.random() * hand.length);
+        const previewCard = hand[playIndex];
+        if (previewCard) {
+          const actionToken = beginTapTapActionAnimation();
+          const isAnimationCurrent = () =>
+            runToken === tapTapBotRunToken && isTapTapActionAnimationCurrent(actionToken);
+          const playTransactionId = nextMappedCardTransitionTransactionId(`taptap-${seatId}-play`);
+
+          try {
+            const durations = getTapTapActionDurations();
+            const targetTiltDeg = getNaturalizedTrickTableTiltDeg(
+              getBotSeatBaseTiltDeg(seatId),
+              1.8
+            );
+            const resolvedPlayedAnchor = await resolveTapTapPileTopAnchor("played");
+            const playedPileAnchor = resolvedPlayedAnchor ?? getTapTapPileAnchor("played");
+            const botPlayTransition = emitMappedCardTransitionFromGameEvent({
+              sourceScope: "taptap",
+              seatId,
+              transactionId: playTransactionId,
+              action: "play",
+              card: previewCard,
+              fromZoneId: `hand.${seatId}.edge`,
+              fromSeatId: seatId,
+              toZoneId: "pile.played",
+              toSeatId: seatId,
+              durationMs: durations.playMs,
+              visibilityPolicy: { mode: "face_up_always" },
+              stateCommitPolicy: { mode: "on_complete" },
+              interruptPolicy: { mode: "cancel" },
+              orientation: {
+                startTiltDeg: getBotSeatBaseTiltDeg(seatId),
+                endTiltDeg: targetTiltDeg
+              },
+              events: { emit: ["on_start", "on_commit", "on_complete"], channel: "taptap" },
+              metadata: { actorSeatId: seatId, phase: "bot_play" }
+            }, "taptap:bot-play");
+            const botPlayTiming = resolveTransitionRuntimeTiming(botPlayTransition, {
+              durationMs: durations.playMs,
+              easing: TRICK_FLIGHT_EASING
+            });
+            const botPlayOrientation = resolveTransitionRuntimeOrientation(botPlayTransition, {
+              startTiltDeg: getBotSeatBaseTiltDeg(seatId),
+              endTiltDeg: targetTiltDeg
+            });
+            const botPlayConcealed = resolveTransitionRuntimeStartConcealed(botPlayTransition, false);
+
+            await animateTapTapCardTransfer({
+              card: previewCard,
+              startAnchor: getTapTapBotEdgeSeatAnchor(seatId),
+              endAnchor: playedPileAnchor,
+              concealed: botPlayConcealed,
+              startTiltDeg: botPlayOrientation.startTiltDeg,
+              endTiltDeg: botPlayOrientation.endTiltDeg,
+              durationMs: botPlayTiming.durationMs,
+              easing: botPlayTiming.easing,
+              isRunCurrent: isAnimationCurrent
+            });
+
+            if (!isAnimationCurrent()) {
+              return;
+            }
+
+            const [playedCard] = hand.splice(playIndex, 1);
+            if (playedCard) {
+              tapTapHandsBySeatId.set(seatId, hand);
+              tapTapPlayedPile.push(playedCard);
+              setStatus(`TapTap: ${botLabel} played ${getCardPlayLabel(playedCard)}.`);
+              appendTapTapActionLogEntry({
+                seatId,
+                action: "played",
+                card: playedCard
+              });
+              updateDebugOverlays();
+            }
+
+            await waitForMs(90);
+          } finally {
+            clearTrickLayer();
+            endTapTapActionAnimation(actionToken);
+          }
+        }
+      } else {
+        setStatus(`TapTap: ${botLabel} had no playable card.`);
+        updateDebugOverlays();
+        await waitForMs(180);
+      }
+
+      if (isTapTapGameExhausted()) {
+        setTapTapTurnSeat("S");
+        setStatus("TapTap: all cards are exhausted. Redraw to restart.");
+        updateDebugOverlays();
+        return;
+      }
+
+      advanceTapTapTurn();
+      updateDebugOverlays();
+    }
+  } finally {
+    if (runToken === tapTapBotRunToken) {
+      tapTapBotRunActive = false;
+    }
+  }
+
+  if (
+    runToken === tapTapBotRunToken &&
+    isTapTapMode() &&
+    tapTapStateActive &&
+    tapTapTurnSeatId === "S" &&
+    !isTapTapGameExhausted()
+  ) {
+    setStatus("TapTap: your turn. Draw is optional.");
+    syncTapTapTurnLock();
+    updateDebugOverlays();
+  }
+}
+
+function getTapTapPlayfieldCenterAnchor() {
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    return { x: 0, y: 0 };
+  }
+
+  const playfieldRect = playfieldElement.getBoundingClientRect();
+  const fallbackCardTableRect = cardTable instanceof HTMLElement
+    ? cardTable.getBoundingClientRect()
+    : null;
+  const width = playfieldElement.clientWidth || playfieldRect.width || fallbackCardTableRect?.width || 0;
+  const height = playfieldElement.clientHeight || playfieldRect.height || fallbackCardTableRect?.height || 0;
+
+  if (width <= 0 || height <= 0) {
+    return { x: 0, y: 0 };
+  }
+
+  return {
+    x: width / 2,
+    y: height / 2
+  };
+}
+
+function getElementCenterInPlayfield(element) {
+  if (!(element instanceof HTMLElement)) {
+    return null;
+  }
+
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    return null;
+  }
+
+  const playfieldRect = playfieldElement.getBoundingClientRect();
+  const elementRect = element.getBoundingClientRect();
+  if (!(elementRect.width > 0) || !(elementRect.height > 0)) {
+    return null;
+  }
+
+  return {
+    x: elementRect.left - playfieldRect.left + (elementRect.width / 2),
+    y: elementRect.top - playfieldRect.top + (elementRect.height / 2)
+  };
+}
+
+function getTapTapPileAnchorFromDom(pileKind) {
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    return null;
+  }
+
+  const topLayerElement = playfieldElement.querySelector(
+    `.taptap-pile--${pileKind} .taptap-pile__stack-card--top`
+  );
+  if (topLayerElement instanceof HTMLElement) {
+    const topLayerAnchor = getElementCenterInPlayfield(topLayerElement);
+    if (isFiniteAnchor(topLayerAnchor)) {
+      return topLayerAnchor;
+    }
+  }
+
+  const stackElement = playfieldElement.querySelector(
+    `.taptap-pile--${pileKind} .taptap-pile__stack`
+  );
+  const stackAnchor = getElementCenterInPlayfield(stackElement);
+  return isFiniteAnchor(stackAnchor) ? stackAnchor : null;
+}
+
+function refreshTapTapPileAnchorsFromDom() {
+  setTapTapPileAnchor("draw", getTapTapPileAnchorFromDom("draw"));
+  setTapTapPileAnchor("played", getTapTapPileAnchorFromDom("played"));
+}
+
+function getTapTapPileAnchor(pileKind) {
+  const cachedAnchor = getTapTapPileAnchorFromCache(pileKind);
+  if (cachedAnchor) {
+    return cachedAnchor;
+  }
+
+  const domAnchor = getTapTapPileAnchorFromDom(pileKind);
+  if (domAnchor) {
+    setTapTapPileAnchor(pileKind, domAnchor);
+    return domAnchor;
+  }
+
+  return getTapTapPlayfieldCenterAnchor();
+}
+
+function getTapTapPileTopAnchor(pileKind) {
+  return getTapTapPileAnchorFromCache(pileKind) ?? getTapTapPileAnchorFromDom(pileKind);
+}
+
+async function resolveTapTapPileTopAnchor(pileKind, { attempts = 3 } = {}) {
+  const safeAttempts = Math.max(1, Number.isInteger(attempts) ? attempts : 3);
+
+  for (let attemptIndex = 0; attemptIndex < safeAttempts; attemptIndex += 1) {
+    refreshTapTapPileAnchorsFromDom();
+    const anchor = getTapTapPileTopAnchor(pileKind);
+    if (anchor) {
+      return anchor;
+    }
+
+    await updateTapTapCenterPiles();
+    await waitForMs(16);
+  }
+
+  refreshTapTapPileAnchorsFromDom();
+  return getTapTapPileTopAnchor(pileKind);
+}
+
+function getTapTapActionSeatAnchor(seatId) {
+  return getSeatAnchorById(seatId) ?? getTapTapPlayfieldCenterAnchor();
+}
+
+function getTapTapBotEdgeSeatAnchor(seatId) {
+  return getBotEdgeLaunchAnchorBySeatId(seatId) ??
+    getTapTapActionSeatAnchor(seatId);
+}
+
+function getTapTapHandCenterHoverAnchor() {
+  const metrics = getHandLayoutMetrics(currentCards.length);
+  if (!metrics || !Array.isArray(metrics.cardLayouts) || metrics.cardLayouts.length === 0) {
+    return getTapTapActionSeatAnchor("S");
+  }
+
+  const minLeft = Math.min(...metrics.cardLayouts.map((layout) => layout.left));
+  const maxRight = Math.max(...metrics.cardLayouts.map((layout) => layout.left + metrics.cardWidth));
+  const minTop = Math.min(...metrics.cardLayouts.map((layout) => layout.top));
+  const maxBottom = Math.max(...metrics.cardLayouts.map((layout) => layout.top + metrics.cardHeight));
+  const handCenterX = (minLeft + maxRight) / 2;
+  const handCenterY = (minTop + maxBottom) / 2;
+  const hoverY = handCenterY - (metrics.cardHeight * 0.5);
+  const handCenterAnchorInTable = {
+    x: handCenterX,
+    y: hoverY
+  };
+
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    return getTapTapActionSeatAnchor("S");
+  }
+
+  const playfieldRect = playfieldElement.getBoundingClientRect();
+  const cardTableRect = cardTable.getBoundingClientRect();
+  return {
+    x: handCenterAnchorInTable.x + (cardTableRect.left - playfieldRect.left),
+    y: handCenterAnchorInTable.y + (cardTableRect.top - playfieldRect.top)
+  };
+}
+
+function beginTapTapActionAnimation() {
+  tapTapActionRunToken += 1;
+  tapTapActionInFlight = true;
+  setTrickPhase(TRICK_PHASE_TRICK_PLAYING);
+  return tapTapActionRunToken;
+}
+
+function isTapTapActionAnimationCurrent(token) {
+  return token === tapTapActionRunToken &&
+    tapTapActionInFlight &&
+    isTapTapMode() &&
+    tapTapStateActive &&
+    getViewMode() === "hand";
+}
+
+function endTapTapActionAnimation(token) {
+  if (token !== tapTapActionRunToken) {
+    return;
+  }
+
+  tapTapActionInFlight = false;
+  syncTapTapTurnLock();
+}
+
+function getTapTapActionDurations() {
+  const profile = getTrickAnimationProfile();
+  return {
+    drawMs: Math.max(150, Math.round(profile.botFlightMs * 0.9)),
+    revealMs: Math.max(130, Math.round(profile.botFlightMs * 0.7)),
+    insertMs: Math.max(170, Math.round(profile.botFlightMs * 0.95)),
+    playMs: Math.max(190, profile.botFlightMs + 45)
+  };
+}
+
+async function createTapTapActionSprite(card, { concealed = false } = {}) {
+  const sprite = await createCardElement(card, getRenderMode());
+  if (!(sprite instanceof HTMLElement)) {
+    return null;
+  }
+
+  const cardSize = getCurrentCardRenderSizePx();
+  sprite.classList.add("trick-card-sprite", "taptap-card-sprite");
+  if (concealed) {
+    sprite.classList.add("trick-card-sprite--concealed");
+  }
+  sprite.style.position = "absolute";
+  sprite.style.left = "0px";
+  sprite.style.top = "0px";
+  sprite.style.margin = "0";
+  sprite.style.width = `${cardSize.width}px`;
+  sprite.style.height = `${cardSize.height}px`;
+  sprite.style.transformOrigin = "50% 50%";
+  sprite.style.pointerEvents = "none";
+  sprite.style.visibility = "hidden";
+  return sprite;
+}
+
+async function animateTapTapCardTransfer({
+  card,
+  startAnchor,
+  endAnchor,
+  concealed = false,
+  startTiltDeg = 0,
+  endTiltDeg = 0,
+  durationMs = 180,
+  easing = TRICK_FLIGHT_EASING,
+  isRunCurrent
+}) {
+  if (!card || typeof isRunCurrent !== "function" || !isRunCurrent()) {
+    return false;
+  }
+
+  const trickLayer = ensureTrickLayer();
+  if (!(trickLayer instanceof HTMLElement)) {
+    return false;
+  }
+
+  const sprite = await createTapTapActionSprite(card, { concealed });
+  if (!(sprite instanceof HTMLElement) || !isRunCurrent()) {
+    return false;
+  }
+
+  try {
+    setSpritePoseFromAnchor(sprite, startAnchor.x, startAnchor.y, startTiltDeg, 1);
+    trickLayer.appendChild(sprite);
+    void sprite.offsetWidth;
+    sprite.style.visibility = "visible";
+
+    await transitionSpriteToAnchor(sprite, {
+      anchorX: endAnchor.x,
+      anchorY: endAnchor.y,
+      rotateDeg: endTiltDeg,
+      scale: 1,
+      durationMs,
+      easing
+    });
+  } finally {
+    sprite.remove();
+  }
+
+  return isRunCurrent();
+}
+
+async function animateTapTapDrawRevealInHand(
+  previewCard,
+  {
+    durationMs = 150,
+    isRunCurrent
+  } = {}
+) {
+  if (!previewCard || typeof isRunCurrent !== "function" || !isRunCurrent()) {
+    return false;
+  }
+
+  const trickLayer = ensureTrickLayer();
+  if (!(trickLayer instanceof HTMLElement)) {
+    return false;
+  }
+
+  const sprite = await createTapTapActionSprite(previewCard, { concealed: true });
+  if (!(sprite instanceof HTMLElement) || !isRunCurrent()) {
+    return false;
+  }
+
+  const anchor = getTapTapHandCenterHoverAnchor();
+  const halfDurationMs = Math.max(65, Math.round(durationMs / 2));
+
+  try {
+    setSpritePoseFromAnchor(sprite, anchor.x, anchor.y, 0, 1);
+    trickLayer.appendChild(sprite);
+    void sprite.offsetWidth;
+    sprite.style.visibility = "visible";
+
+    sprite.style.transition = `transform ${halfDurationMs}ms cubic-bezier(0.45, 0.05, 0.55, 0.95)`;
+    window.requestAnimationFrame(() => {
+      sprite.style.transform = "rotate(0deg) scale(0.08, 1)";
+    });
+    await waitForMs(halfDurationMs + 45);
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    sprite.classList.remove("trick-card-sprite--concealed");
+    sprite.style.transition = "none";
+    sprite.style.transform = "rotate(0deg) scale(0.08, 1)";
+    await waitForMs(16);
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    sprite.style.transition = `transform ${halfDurationMs}ms cubic-bezier(0.2, 0.7, 0.2, 1)`;
+    window.requestAnimationFrame(() => {
+      sprite.style.transform = "rotate(0deg) scale(1, 1)";
+    });
+    await waitForMs(halfDurationMs + 50);
+  } finally {
+    sprite.remove();
+  }
+
+  return isRunCurrent();
+}
+
+async function animateTapTapDrawSlideIntoHand(
+  cardId,
+  {
+    durationMs = 190,
+    isRunCurrent
+  } = {}
+) {
+  if (typeof cardId !== "string" || typeof isRunCurrent !== "function" || !isRunCurrent()) {
+    return false;
+  }
+
+  const selector = getCardSelectorById(cardId);
+  if (!selector) {
+    return false;
+  }
+
+  const targetCardElement = cardTable.querySelector(selector);
+  const targetAnchor = getElementCenterInPlayfield(targetCardElement);
+  const cardModel = findCurrentCardById(cardId);
+  if (!(targetCardElement instanceof HTMLElement) || !targetAnchor || !cardModel) {
+    return false;
+  }
+
+  const trickLayer = ensureTrickLayer();
+  if (!(trickLayer instanceof HTMLElement)) {
+    return false;
+  }
+
+  const sprite = await createTapTapActionSprite(cardModel, { concealed: false });
+  if (!(sprite instanceof HTMLElement) || !isRunCurrent()) {
+    return false;
+  }
+
+  const startAnchor = getTapTapHandCenterHoverAnchor();
+  const sourceBaseTiltDeg = Number.parseFloat(targetCardElement.dataset.handThetaDeg ?? "");
+  const targetTiltDeg = Number.isFinite(sourceBaseTiltDeg) ? sourceBaseTiltDeg : 0;
+  targetCardElement.style.visibility = "hidden";
+
+  try {
+    setSpritePoseFromAnchor(sprite, startAnchor.x, startAnchor.y, 0, 1);
+    trickLayer.appendChild(sprite);
+    void sprite.offsetWidth;
+    sprite.style.visibility = "visible";
+
+    // Keep the destination slot visibly open for a moment before insertion.
+    await waitForMs(Math.max(40, Math.round(durationMs * 0.22)));
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    await transitionSpriteToAnchor(sprite, {
+      anchorX: targetAnchor.x,
+      anchorY: targetAnchor.y,
+      rotateDeg: targetTiltDeg,
+      scale: 1,
+      durationMs,
+      easing: "cubic-bezier(0.2, 0.72, 0.2, 1)"
+    });
+  } finally {
+    targetCardElement.style.removeProperty("visibility");
+    sprite.remove();
+  }
+
+  return isRunCurrent();
+}
+
+async function animateTapTapHumanPlayFromHand({
+  cardId,
+  clickClientX,
+  durationMs,
+  easing = TRICK_FLIGHT_EASING,
+  isRunCurrent
+}) {
+  if (typeof isRunCurrent !== "function" || !isRunCurrent()) {
+    return false;
+  }
+
+  const payload = createTrickSpriteFromHandCard(cardId);
+  if (!payload) {
+    return false;
+  }
+
+  const trickLayer = ensureTrickLayer();
+  if (!(trickLayer instanceof HTMLElement)) {
+    if (payload.sourceCardElement instanceof HTMLElement) {
+      payload.sourceCardElement.style.removeProperty("visibility");
+    }
+    return false;
+  }
+
+  const { sprite, sourceCardElement } = payload;
+  const playTiltDeg = getPlayTiltDegFromClick(sourceCardElement, clickClientX);
+  const landingTiltDeg = getNaturalizedTrickTableTiltDeg(playTiltDeg, 1.6);
+  const resolvedPlayedAnchor = await resolveTapTapPileTopAnchor("played");
+  const targetAnchor = resolvedPlayedAnchor ?? getTapTapPileAnchor("played");
+
+  try {
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    trickLayer.appendChild(sprite);
+    await transitionSpriteToAnchor(sprite, {
+      anchorX: targetAnchor.x,
+      anchorY: targetAnchor.y,
+      rotateDeg: landingTiltDeg,
+      scale: 1,
+      durationMs,
+      easing
+    });
+  } finally {
+    if (sourceCardElement instanceof HTMLElement) {
+      sourceCardElement.style.removeProperty("visibility");
+    }
+    sprite.remove();
+  }
+
+  return isRunCurrent();
+}
+
+async function runTapTapHumanPlaySequence(cardId, payload = {}) {
+  if (!isTapTapMode() || !tapTapStateActive || getViewMode() !== "hand" || tapTapActionInFlight) {
+    return false;
+  }
+
+  if (tapTapTurnSeatId !== "S") {
+    return false;
+  }
+
+  const {
+    source = "short_click",
+    clickClientX = Number.NaN
+  } = payload ?? {};
+
+  const hand = getTapTapSeatHand("S");
+  const cardIndex = hand.findIndex((entry) => entry?.cardId === cardId);
+  if (cardIndex < 0) {
+    return false;
+  }
+  const selectedCard = hand[cardIndex] ?? null;
+
+  const actionToken = beginTapTapActionAnimation();
+  const isRunCurrent = () => isTapTapActionAnimationCurrent(actionToken);
+  let shouldRunBots = false;
+  const playTransactionId = nextMappedCardTransitionTransactionId("taptap-S-play");
+
+  try {
+    const durations = getTapTapActionDurations();
+    const humanPlayTransition = emitMappedCardTransitionFromGameEvent({
+      sourceScope: "taptap",
+      seatId: "S",
+      transactionId: playTransactionId,
+      action: "play",
+      card: selectedCard,
+      fromZoneId: "hand.S",
+      fromSeatId: "S",
+      toZoneId: "pile.played",
+      toSeatId: "S",
+      durationMs: durations.playMs,
+      visibilityPolicy: { mode: "face_up_always" },
+      stateCommitPolicy: { mode: "on_complete" },
+      interruptPolicy: { mode: "cancel" },
+      events: { emit: ["on_start", "on_commit", "on_complete"], channel: "taptap" },
+      metadata: { actorSeatId: "S", phase: "human_play", source }
+    }, "taptap:human-play");
+    const humanPlayTiming = resolveTransitionRuntimeTiming(humanPlayTransition, {
+      durationMs: durations.playMs,
+      easing: TRICK_FLIGHT_EASING
+    });
+
+    await animateTapTapHumanPlayFromHand({
+      cardId,
+      clickClientX,
+      durationMs: humanPlayTiming.durationMs,
+      easing: humanPlayTiming.easing,
+      isRunCurrent
+    });
+
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    const currentHand = getTapTapSeatHand("S");
+    const currentCardIndex = currentHand.findIndex((entry) => entry?.cardId === cardId);
+    if (currentCardIndex < 0) {
+      return false;
+    }
+
+    const [playedCard] = currentHand.splice(currentCardIndex, 1);
+    if (!playedCard) {
+      return false;
+    }
+
+    tapTapHandsBySeatId.set("S", currentHand);
+    tapTapPlayedPile.push(playedCard);
+    currentCards = currentHand.slice();
+    const nextSeat = advanceTapTapTurn();
+    await renderCards(currentCards);
+
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    setStatus(`TapTap: played ${getCardPlayLabel(playedCard)} (${source}).`);
+    appendTapTapActionLogEntry({
+      seatId: "S",
+      action: "played",
+      card: playedCard,
+      note: source
+    });
+    if (isTapTapGameExhausted()) {
+      setTapTapTurnSeat("S");
+      setStatus("TapTap: all cards are exhausted. Redraw to restart.");
+      updateDebugOverlays();
+      return true;
+    }
+
+    if (nextSeat !== "S" && !isTapTapGameExhausted()) {
+      shouldRunBots = true;
+      return true;
+    }
+
+    setStatus("TapTap: your turn. Draw is optional.");
+    syncTapTapTurnLock();
+    updateDebugOverlays();
+    return true;
+  } finally {
+    clearTrickLayer();
+    endTapTapActionAnimation(actionToken);
+    if (
+      shouldRunBots &&
+      isTapTapMode() &&
+      tapTapStateActive &&
+      tapTapTurnSeatId !== "S" &&
+      !isTapTapGameExhausted()
+    ) {
+      void runTapTapBotTurns();
+    }
+  }
+}
+
+function handleTapTapPlayIntent(cardId, payload = {}) {
+  if (!isTapTapMode() || !tapTapStateActive || getViewMode() !== "hand") {
+    return false;
+  }
+
+  if (tapTapActionInFlight) {
+    setStatus("TapTap: action in progress.");
+    return false;
+  }
+
+  if (tapTapTurnSeatId !== "S") {
+    setStatus("TapTap: wait for your turn.");
+    return false;
+  }
+
+  const hand = getTapTapSeatHand("S");
+  const cardIndex = hand.findIndex((entry) => entry?.cardId === cardId);
+  if (cardIndex < 0) {
+    return false;
+  }
+
+  void runTapTapHumanPlaySequence(cardId, payload);
+  return true;
+}
+
+function isSupportedTrickPhase(phase) {
+  return phase === TRICK_PHASE_DEAL_IDLE ||
+    phase === TRICK_PHASE_TRICK_LOCK ||
+    phase === TRICK_PHASE_TRICK_PLAYING ||
+    phase === TRICK_PHASE_TRICK_RESOLVE ||
+    phase === TRICK_PHASE_TRICK_COLLECT;
+}
+
+function isTrickInteractionLocked() {
+  return LOCKED_TRICK_PHASES.has(trickPhase);
+}
+
+function updateTrickPhaseUiState() {
+  if (!(cardTable instanceof HTMLElement)) {
+    return;
+  }
+
+  cardTable.classList.toggle("card-table--trick-locked", isTrickInteractionLocked());
+}
+
+function setTrickPhase(nextPhase) {
+  if (!isSupportedTrickPhase(nextPhase)) {
+    return;
+  }
+
+  trickPhase = nextPhase;
+  if (isTrickInteractionLocked()) {
+    clearHandHoverState();
+    if (isAnyDragActive()) {
+      resetCardDragState();
+    }
+  }
+  updateTrickPhaseUiState();
+}
+
+function resetTrickStateForDeal(nextDealCount) {
+  stopTapTapBotLoop();
+  cancelTapTapActionAnimations();
+  clearPendingTrickSweepContinueWait();
+  if (playIntentStatusTimeoutId !== null) {
+    window.clearTimeout(playIntentStatusTimeoutId);
+    playIntentStatusTimeoutId = null;
+  }
+
+  trickAnimationRunToken += 1;
+  dealRequestedCount = Number.isInteger(nextDealCount) ? nextDealCount : DEFAULT_CARD_COUNT;
+  playerCountForDeal = getPlayerCountForDealCount(dealRequestedCount);
+  setTrickPhase(TRICK_PHASE_DEAL_IDLE);
+  lastPlayIntentCardId = null;
+  lastPlayIntentAtIso = null;
+}
+
+function clearPlayIntentStatusMessageLater(delayMs = 1200) {
+  if (playIntentStatusTimeoutId !== null) {
+    window.clearTimeout(playIntentStatusTimeoutId);
+  }
+
+  const expectedIntentTimestamp = lastPlayIntentAtIso;
+  playIntentStatusTimeoutId = window.setTimeout(() => {
+    playIntentStatusTimeoutId = null;
+    if (lastPlayIntentAtIso !== expectedIntentTimestamp) {
+      return;
+    }
+    clearStatus();
+  }, delayMs);
+}
+
+function findCurrentCardById(cardId) {
+  if (typeof cardId !== "string" || cardId.length === 0 || !Array.isArray(currentCards)) {
+    return null;
+  }
+
+  return currentCards.find((card) => card?.cardId === cardId) ?? null;
+}
+
+function getUiScaleFactor() {
+  const rootStyle = window.getComputedStyle(document.documentElement);
+  const parsed = Number.parseFloat(rootStyle.getPropertyValue("--ui-scale"));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function getTrickPlayfieldElement() {
+  if (tableSection instanceof HTMLElement) {
+    return tableSection;
+  }
+
+  return tableViewport instanceof HTMLElement ? tableViewport : cardTable;
+}
+
+function getCurrentCardRenderSizePx() {
+  const cardHeight = getCardSizePx();
+  return {
+    width: cardHeight * CARD_ASPECT_RATIO,
+    height: cardHeight
+  };
+}
+
+function formatDebugCoordValue(value) {
+  return Number.isFinite(value) ? `${Math.round(value)}` : "--";
+}
+
+function updateTrickDebugTableCenter() {
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    trickDebugTableCenterX = null;
+    trickDebugTableCenterY = null;
+    return;
+  }
+
+  const width = playfieldElement.clientWidth;
+  const height = playfieldElement.clientHeight;
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    trickDebugTableCenterX = null;
+    trickDebugTableCenterY = null;
+    return;
+  }
+
+  trickDebugTableCenterX = width / 2;
+  trickDebugTableCenterY = height / 2;
+}
+
+function setTrickDebugMouseFromEvent(event) {
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    trickDebugMouseX = null;
+    trickDebugMouseY = null;
+    return;
+  }
+
+  const rect = playfieldElement.getBoundingClientRect();
+  const clampedX = Math.max(0, Math.min(playfieldElement.clientWidth, event.clientX - rect.left));
+  const clampedY = Math.max(0, Math.min(playfieldElement.clientHeight, event.clientY - rect.top));
+  trickDebugMouseX = clampedX;
+  trickDebugMouseY = clampedY;
+}
+
+function clearTrickDebugMousePosition() {
+  trickDebugMouseX = null;
+  trickDebugMouseY = null;
+}
+
+function resetTrickDebugPlayedAnchors() {
+  trickDebugPlayedAnchorsBySeatId = new Map();
+}
+
+function setTrickDebugPlayedAnchor(seatId, anchor) {
+  if (
+    typeof seatId !== "string" ||
+    !anchor ||
+    !Number.isFinite(anchor.x) ||
+    !Number.isFinite(anchor.y)
+  ) {
+    return;
+  }
+
+  trickDebugPlayedAnchorsBySeatId.set(seatId, { x: anchor.x, y: anchor.y });
+}
+
+function renderTrickDebugPanel() {
+  if (!(trickDebugText instanceof HTMLElement)) {
+    return;
+  }
+
+  updateTrickDebugTableCenter();
+  const lines = [
+    `Mouse (table): x=${formatDebugCoordValue(trickDebugMouseX)} y=${formatDebugCoordValue(trickDebugMouseY)}`,
+    `Table center: x=${formatDebugCoordValue(trickDebugTableCenterX)} y=${formatDebugCoordValue(trickDebugTableCenterY)}`,
+    "Played anchors:"
+  ];
+
+  ["S", "W", "N", "E"].forEach((seatId) => {
+    const anchor = trickDebugPlayedAnchorsBySeatId.get(seatId);
+    lines.push(
+      `  ${seatId}: x=${formatDebugCoordValue(anchor?.x)} y=${formatDebugCoordValue(anchor?.y)}`
+    );
+  });
+
+  const activeBotSeatIds = getActiveBotSeatIds(playerCountForDeal);
+  if (activeBotSeatIds.length > 0) {
+    lines.push("Bot anchors:");
+    activeBotSeatIds.forEach((seatId) => {
+      const seatAnchor = getSeatAnchorById(seatId);
+      const edgeAnchor = getBotEdgeLaunchAnchorBySeatId(seatId);
+      lines.push(
+        `  ${seatId} seat: x=${formatDebugCoordValue(seatAnchor?.x)} y=${formatDebugCoordValue(seatAnchor?.y)}`
+      );
+      lines.push(
+        `  ${seatId} edge: x=${formatDebugCoordValue(edgeAnchor?.x)} y=${formatDebugCoordValue(edgeAnchor?.y)}`
+      );
+    });
+  }
+
+  const drawPileAnchor = getTapTapPileAnchorFromCache("draw") ?? getTapTapPileAnchorFromDom("draw");
+  const playedPileAnchor = getTapTapPileAnchorFromCache("played") ?? getTapTapPileAnchorFromDom("played");
+  lines.push("Pile anchors:");
+  lines.push(
+    `  draw: x=${formatDebugCoordValue(drawPileAnchor?.x)} y=${formatDebugCoordValue(drawPileAnchor?.y)}`
+  );
+  lines.push(
+    `  played: x=${formatDebugCoordValue(playedPileAnchor?.x)} y=${formatDebugCoordValue(playedPileAnchor?.y)}`
+  );
+
+  trickDebugText.textContent = lines.join("\n");
+  if (trickDebugPanel instanceof HTMLElement) {
+    trickDebugPanel.hidden = false;
+  }
+}
+
+function getSpriteCenterInPlayfield(sprite) {
+  if (!(sprite instanceof HTMLElement)) {
+    return null;
+  }
+
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    return null;
+  }
+
+  const playfieldRect = playfieldElement.getBoundingClientRect();
+  const spriteRect = sprite.getBoundingClientRect();
+  if (!(spriteRect.width > 0) || !(spriteRect.height > 0)) {
+    return null;
+  }
+
+  return {
+    x: (spriteRect.left - playfieldRect.left) + (spriteRect.width / 2),
+    y: (spriteRect.top - playfieldRect.top) + (spriteRect.height / 2)
+  };
+}
+
+function clearPendingTrickSweepContinueWait() {
+  if (typeof trickSweepContinueCleanup === "function") {
+    trickSweepContinueCleanup();
+  }
+  trickSweepContinueCleanup = null;
+
+  if (typeof trickSweepContinueResolve === "function") {
+    const resolve = trickSweepContinueResolve;
+    trickSweepContinueResolve = null;
+    resolve(false);
+  }
+}
+
+function waitForTrickSweepContinueClick(isRunCurrent) {
+  clearPendingTrickSweepContinueWait();
+
+  return new Promise((resolve) => {
+    const playfieldElement = getTrickPlayfieldElement();
+    if (!(playfieldElement instanceof HTMLElement)) {
+      resolve(false);
+      return;
+    }
+
+    let settled = false;
+    const settle = (value) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (typeof trickSweepContinueCleanup === "function") {
+        trickSweepContinueCleanup();
+      }
+      trickSweepContinueCleanup = null;
+      trickSweepContinueResolve = null;
+      resolve(value);
+    };
+
+    const onPointerDown = (event) => {
+      if (!isRunCurrent() || event.button !== 0) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      settle(true);
+    };
+
+    trickSweepContinueCleanup = () => {
+      playfieldElement.removeEventListener("pointerdown", onPointerDown, true);
+    };
+    trickSweepContinueResolve = settle;
+    playfieldElement.addEventListener("pointerdown", onPointerDown, true);
+  });
+}
+
+function getSeatAnchorById(seatId) {
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    return null;
+  }
+
+  const tableWidth = playfieldElement.clientWidth;
+  const tableHeight = playfieldElement.clientHeight;
+  if (!Number.isFinite(tableWidth) || !Number.isFinite(tableHeight) || tableWidth <= 0 || tableHeight <= 0) {
+    return null;
+  }
+
+  const margin = SEAT_BORDER_MARGIN_PX;
+  const cx = tableWidth / 2;
+  const cy = tableHeight / 2;
+
+  if (seatId === "S") {
+    return { x: cx, y: tableHeight * (HUMAN_SEAT_VISUAL.yPct / 100) };
+  }
+
+  const playerCount = Number.isInteger(playerCountForDeal)
+    ? playerCountForDeal
+    : getPlayerCountForDealCount(dealRequestedCount);
+
+  if (playerCount === 4) {
+    if (seatId === "N") return { x: cx, y: margin };
+    if (seatId === "W") return { x: margin, y: cy };
+    if (seatId === "E") return { x: tableWidth - margin, y: cy };
+  }
+
+  if (playerCount === 3) {
+    if (seatId === "W") return { x: tableWidth * 0.25, y: margin };
+    if (seatId === "E") return { x: tableWidth * 0.75, y: margin };
+  }
+
+  if (playerCount === 2 && seatId === "N") {
+    return { x: cx, y: margin };
+  }
+
+  return null;
+}
+
+function getBotEdgeLaunchAnchorBySeatId(seatId) {
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    return null;
+  }
+
+  const tableWidth = playfieldElement.clientWidth;
+  const tableHeight = playfieldElement.clientHeight;
+  if (!Number.isFinite(tableWidth) || !Number.isFinite(tableHeight) || tableWidth <= 0 || tableHeight <= 0) {
+    return null;
+  }
+
+  const seatAnchor = getSeatAnchorById(seatId);
+  if (!seatAnchor) {
+    return null;
+  }
+
+  const centerX = tableWidth / 2;
+  const centerY = tableHeight / 2;
+  const direction = {
+    x: seatAnchor.x - centerX,
+    y: seatAnchor.y - centerY
+  };
+  const directionLength = Math.hypot(direction.x, direction.y);
+  const unitDirection = directionLength > 0.001
+    ? { x: direction.x / directionLength, y: direction.y / directionLength }
+    : { x: 0, y: -1 };
+
+  const tx = Math.abs(unitDirection.x) > 0.0001
+    ? ((unitDirection.x > 0 ? tableWidth : 0) - centerX) / unitDirection.x
+    : Number.POSITIVE_INFINITY;
+  const ty = Math.abs(unitDirection.y) > 0.0001
+    ? ((unitDirection.y > 0 ? tableHeight : 0) - centerY) / unitDirection.y
+    : Number.POSITIVE_INFINITY;
+
+  const tEdge = Math.min(
+    Number.isFinite(tx) && tx > 0 ? tx : Number.POSITIVE_INFINITY,
+    Number.isFinite(ty) && ty > 0 ? ty : Number.POSITIVE_INFINITY
+  );
+  if (!Number.isFinite(tEdge)) {
+    return seatAnchor;
+  }
+
+  const edgeX = centerX + (unitDirection.x * tEdge);
+  const edgeY = centerY + (unitDirection.y * tEdge);
+  const cardSize = getCurrentCardRenderSizePx();
+  const projectedHalfExtentPx =
+    (Math.abs(unitDirection.x) * (cardSize.width / 2)) +
+    (Math.abs(unitDirection.y) * (cardSize.height / 2));
+  const outerGapPx = Math.max(10, Math.round(12 * getUiScaleFactor()));
+  const outsideDistancePx = projectedHalfExtentPx + outerGapPx;
+  return {
+    x: edgeX + (unitDirection.x * outsideDistancePx),
+    y: edgeY + (unitDirection.y * outsideDistancePx)
+  };
+}
+
+function getBotLaunchAnchorById(seatId) {
+  if (trickBotAnimationMode === "edge_fly") {
+    const edgeAnchor = getBotEdgeLaunchAnchorBySeatId(seatId);
+    if (edgeAnchor) {
+      return edgeAnchor;
+    }
+  }
+
+  return getSeatAnchorById(seatId);
+}
+
+function getTrickSlotAnchors(seatOrder) {
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    return [];
+  }
+
+  const tableWidth = playfieldElement.clientWidth;
+  const tableHeight = playfieldElement.clientHeight;
+  if (!Number.isFinite(tableWidth) || !Number.isFinite(tableHeight) || tableWidth <= 0 || tableHeight <= 0) {
+    return [];
+  }
+
+  const centerX = tableWidth / 2;
+  const centerY = tableHeight / 2;
+  const halfCardHeight = getCardSizePx() / 2;
+
+  return seatOrder.map((seatId) => {
+    const seatAnchor = getSeatAnchorById(seatId);
+    if (!seatAnchor) {
+      return { x: centerX, y: centerY };
+    }
+
+    const dx = seatAnchor.x - centerX;
+    const dy = seatAnchor.y - centerY;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 1) {
+      return { x: centerX, y: centerY };
+    }
+
+    return {
+      x: centerX + (dx / dist) * halfCardHeight,
+      y: centerY + (dy / dist) * halfCardHeight
+    };
+  });
+}
+
+function getTrickPlaySeatOrder() {
+  return ["S", ...getActiveBotSeatIds(playerCountForDeal)];
+}
+
+
+function getCardPlayLabel(card) {
+  if (!card || typeof card !== "object") {
+    return "Unknown card";
+  }
+
+  if (card.rank === "JOKER") {
+    return getRankLabel("JOKER");
+  }
+
+  const rankLabel = getRankLabel(card.rank);
+  const suitLabel = getSuitLabel(card.suit);
+  return suitLabel ? `${rankLabel} of ${suitLabel}` : rankLabel;
+}
+
+async function createBotTrickSprite(card, seatId, playOrder) {
+  const launchAnchor = getBotLaunchAnchorById(seatId);
+  if (!launchAnchor) {
+    return null;
+  }
+
+  const sprite = await createCardElement(card, getRenderMode());
+  if (!(sprite instanceof HTMLElement)) {
+    return null;
+  }
+
+  sprite.classList.add("trick-card-sprite", "trick-card-sprite--bot");
+  const concealInFlight = trickBotAnimationMode !== "edge_fly";
+  if (concealInFlight) {
+    sprite.classList.add("trick-card-sprite--concealed");
+  }
+  sprite.dataset.playOrder = `${playOrder}`;
+  const cardSize = getCurrentCardRenderSizePx();
+  sprite.style.width = `${cardSize.width}px`;
+  sprite.style.height = `${cardSize.height}px`;
+  sprite.style.transformOrigin = "50% 50%";
+  sprite.style.pointerEvents = "none";
+  sprite.style.visibility = "hidden";
+  return {
+    sprite,
+    launchAnchor
+  };
+}
+
+async function runTrickPlaySequence({
+  cardId,
+  clickClientX,
+  source = "short_click"
+}) {
+  const card = findCurrentCardById(cardId);
+  if (!card || getViewMode() !== "hand") {
+    setTrickPhase(TRICK_PHASE_DEAL_IDLE);
+    return false;
+  }
+
+  const runToken = trickAnimationRunToken + 1;
+  trickAnimationRunToken = runToken;
+  const isRunCurrent = () => trickAnimationRunToken === runToken;
+  const trickAnimationProfile = getTrickAnimationProfile();
+  resetTrickDebugPlayedAnchors();
+  renderTrickDebugPanel();
+
+  const seatOrder = getTrickPlaySeatOrder();
+  const trickSlotAnchors = getTrickSlotAnchors(seatOrder);
+  if (trickSlotAnchors.length === 0) {
+    setTrickPhase(TRICK_PHASE_DEAL_IDLE);
+    return false;
+  }
+
+  const trickLayer = ensureTrickLayer();
+  if (!(trickLayer instanceof HTMLElement)) {
+    setTrickPhase(TRICK_PHASE_DEAL_IDLE);
+    return false;
+  }
+  trickLayer.classList.toggle(
+    "trick-layer--edge-fly",
+    trickBotAnimationMode === "edge_fly"
+  );
+  const trickTransactionId = nextMappedCardTransitionTransactionId("whist-trick");
+  const playGroupId = `${trickTransactionId}:play`;
+  const playBatchSize = seatOrder.length;
+  const resolveBotVisibilityPolicy = () => (
+    trickBotAnimationMode !== "edge_fly"
+      ? {
+        mode: "face_down_until_arrival",
+        startFace: "face_down",
+        endFace: "face_up"
+      }
+      : { mode: "face_up_always" }
+  );
+  const trickPlays = [{ seatId: "S", playerId: "human", playOrder: 0, card }];
+  const spriteByPlayOrder = new Map();
+  let hiddenSourceCardElement = null;
+
+  try {
+    const humanSpritePayload = createTrickSpriteFromHandCard(cardId);
+    if (!humanSpritePayload) {
+      setTrickPhase(TRICK_PHASE_DEAL_IDLE);
+      return false;
+    }
+
+    const { sprite: humanSprite, sourceCardElement } = humanSpritePayload;
+    hiddenSourceCardElement = sourceCardElement;
+    humanSprite.dataset.playOrder = "0";
+    trickLayer.appendChild(humanSprite);
+    spriteByPlayOrder.set(0, humanSprite);
+
+    for (let index = 1; index < seatOrder.length; index += 1) {
+      const seatId = seatOrder[index];
+      const botCard = drawBotTrickCard(seatId, index);
+      if (!botCard) {
+        continue;
+      }
+
+      trickPlays.push({
+        seatId,
+        playerId: `bot-${seatId.toLowerCase()}`,
+        playOrder: index,
+        card: botCard
+      });
+
+      const botSpritePayload = await createBotTrickSprite(botCard, seatId, index);
+      if (!botSpritePayload || !isRunCurrent()) {
+        continue;
+      }
+
+      const { sprite, launchAnchor } = botSpritePayload;
+      trickLayer.appendChild(sprite);
+      const baseTilt = getBotSeatBaseTiltDeg(seatId) + ((Math.random() * 3) - 1.5);
+      setSpritePoseFromAnchor(sprite, launchAnchor.x, launchAnchor.y, baseTilt, 1);
+      sprite.style.visibility = "visible";
+      spriteByPlayOrder.set(index, sprite);
+    }
+
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    setTrickPhase(TRICK_PHASE_TRICK_PLAYING);
+    const playTiltDeg = getPlayTiltDegFromClick(hiddenSourceCardElement, clickClientX);
+    const humanLandingTiltDeg = getNaturalizedTrickTableTiltDeg(
+      playTiltDeg,
+      trickAnimationProfile.tableTiltJitterDeg
+    );
+    const whistHumanPlayTransition = emitMappedCardTransitionFromGameEvent({
+      sourceScope: "whist",
+      seatId: "S",
+      transactionId: trickTransactionId,
+      action: "play",
+      card,
+      fromZoneId: "hand.S",
+      fromSeatId: "S",
+      toZoneId: "table.trick.slot1",
+      toSeatId: "S",
+      durationMs: trickAnimationProfile.humanFlightMs,
+      visibilityPolicy: { mode: "face_up_always" },
+      stateCommitPolicy: { mode: "on_complete" },
+      interruptPolicy: { mode: "cancel" },
+      orientation: {
+        startTiltDeg: playTiltDeg,
+        endTiltDeg: humanLandingTiltDeg
+      },
+      sequence: {
+        orderIndex: 0,
+        staggerMs: trickAnimationProfile.botStaggerMs,
+        batchSize: playBatchSize,
+        waveIndex: 1
+      },
+      concurrency: {
+        groupId: playGroupId,
+        mode: "sequential",
+        maxParallel: 1
+      },
+      events: { emit: ["on_start", "on_commit", "on_complete"], channel: "whist" },
+      metadata: {
+        phase: "trick_play",
+        source,
+        playOrder: 0
+      }
+    }, "whist:human-play");
+    const whistHumanPlayTiming = resolveTransitionRuntimeTiming(whistHumanPlayTransition, {
+      durationMs: trickAnimationProfile.humanFlightMs,
+      easing: TRICK_FLIGHT_EASING
+    });
+    const whistHumanPlayOrientation = resolveTransitionRuntimeOrientation(whistHumanPlayTransition, {
+      startTiltDeg: playTiltDeg,
+      endTiltDeg: humanLandingTiltDeg
+    });
+
+    await transitionSpriteToAnchor(humanSprite, {
+      anchorX: trickSlotAnchors[0].x,
+      anchorY: trickSlotAnchors[0].y,
+      rotateDeg: whistHumanPlayOrientation.endTiltDeg,
+      scale: 1.03,
+      durationMs: whistHumanPlayTiming.durationMs,
+      easing: whistHumanPlayTiming.easing
+    });
+    humanSprite.style.transform = `rotate(${whistHumanPlayOrientation.endTiltDeg}deg) scale(1)`;
+    setTrickDebugPlayedAnchor("S", getSpriteCenterInPlayfield(humanSprite));
+    renderTrickDebugPanel();
+
+    for (let index = 1; index < trickPlays.length; index += 1) {
+      const sprite = spriteByPlayOrder.get(index);
+      const slotAnchor = trickSlotAnchors[index];
+      if (!sprite || !slotAnchor) {
+        continue;
+      }
+
+      const baseTilt = getBotSeatBaseTiltDeg(trickPlays[index].seatId) + ((Math.random() * 3) - 1.5);
+      const destinationTiltDeg = getNaturalizedTrickTableTiltDeg(
+        baseTilt,
+        trickAnimationProfile.tableTiltJitterDeg
+      );
+      const whistBotPlayTransition = emitMappedCardTransitionFromGameEvent({
+        sourceScope: "whist",
+        seatId: trickPlays[index].seatId,
+        transactionId: trickTransactionId,
+        action: "play",
+        card: trickPlays[index].card,
+        fromZoneId: `hand.${trickPlays[index].seatId}`,
+        fromSeatId: trickPlays[index].seatId,
+        toZoneId: `table.trick.slot${index + 1}`,
+        toSeatId: trickPlays[index].seatId,
+        durationMs: trickAnimationProfile.botFlightMs,
+        visibilityPolicy: resolveBotVisibilityPolicy(),
+        stateCommitPolicy: { mode: "on_complete" },
+        interruptPolicy: { mode: "cancel" },
+        orientation: {
+          startTiltDeg: baseTilt,
+          endTiltDeg: destinationTiltDeg
+        },
+        sequence: {
+          orderIndex: index,
+          staggerMs: trickAnimationProfile.botStaggerMs,
+          batchSize: playBatchSize,
+          waveIndex: 1
+        },
+        concurrency: {
+          groupId: playGroupId,
+          mode: "sequential",
+          maxParallel: 1
+        },
+        events: { emit: ["on_start", "on_commit", "on_complete"], channel: "whist" },
+        metadata: {
+          phase: "trick_play",
+          playOrder: index
+        }
+      }, "whist:bot-play");
+      const whistBotPlayTiming = resolveTransitionRuntimeTiming(whistBotPlayTransition, {
+        durationMs: trickAnimationProfile.botFlightMs,
+        easing: TRICK_FLIGHT_EASING
+      });
+      const whistBotPlayOrientation = resolveTransitionRuntimeOrientation(whistBotPlayTransition, {
+        startTiltDeg: baseTilt,
+        endTiltDeg: destinationTiltDeg
+      });
+
+      await transitionSpriteToAnchor(sprite, {
+        anchorX: slotAnchor.x,
+        anchorY: slotAnchor.y,
+        rotateDeg: whistBotPlayOrientation.endTiltDeg,
+        scale: 1,
+        durationMs: whistBotPlayTiming.durationMs,
+        easing: whistBotPlayTiming.easing
+      });
+      if (resolveTransitionRuntimeEndsFaceUp(whistBotPlayTransition, true)) {
+        sprite.classList.remove("trick-card-sprite--concealed");
+      }
+      setTrickDebugPlayedAnchor(trickPlays[index].seatId, getSpriteCenterInPlayfield(sprite));
+      renderTrickDebugPanel();
+
+      const hasNextBotPlay = index < (trickPlays.length - 1);
+      if (hasNextBotPlay && trickAnimationProfile.botStaggerMs > 0) {
+        await waitForMs(trickAnimationProfile.botStaggerMs);
+      }
+
+      if (!isRunCurrent()) {
+        return false;
+      }
+    }
+
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    setTrickPhase(TRICK_PHASE_TRICK_RESOLVE);
+    const winnerPlay = resolveTrickWinnerPlay(trickPlays) ?? trickPlays[0];
+    const winnerSprite = spriteByPlayOrder.get(winnerPlay.playOrder) ?? humanSprite;
+    if (winnerSprite) {
+      winnerSprite.classList.add("trick-card-sprite--winner");
+    }
+    await waitForMs(trickAnimationProfile.highlightMs);
+
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    setStatus("Trick landed. Click table to sweep.");
+    const shouldContinueToSweep = await waitForTrickSweepContinueClick(isRunCurrent);
+    if (!shouldContinueToSweep || !isRunCurrent()) {
+      setTrickPhase(TRICK_PHASE_DEAL_IDLE);
+      return false;
+    }
+
+    setTrickPhase(TRICK_PHASE_TRICK_COLLECT);
+    const winnerAnchor = getSeatAnchorById(winnerPlay.seatId) ?? getSeatAnchorById("S");
+    const collectTransactionId = `${trickTransactionId}:collect`;
+    const collectGroupId = `${collectTransactionId}:simultaneous`;
+    const collectTransitions = [];
+    if (winnerAnchor) {
+      trickPlays.forEach((play, index) => {
+        const sprite = spriteByPlayOrder.get(play.playOrder);
+        if (!sprite) {
+          return;
+        }
+
+        const spread = (index - ((trickPlays.length - 1) / 2)) * 10 * getUiScaleFactor();
+        const raise = index * 2 * getUiScaleFactor();
+        const whistCollectTransition = emitMappedCardTransitionFromGameEvent({
+          sourceScope: "whist",
+          seatId: play.seatId,
+          transactionId: collectTransactionId,
+          action: "collect",
+          card: play.card,
+          fromZoneId: `table.trick.slot${play.playOrder + 1}`,
+          fromSeatId: play.seatId,
+          toZoneId: `trickPile.${winnerPlay.seatId}`,
+          toSeatId: winnerPlay.seatId,
+          durationMs: trickAnimationProfile.collectMs,
+          visibilityPolicy: { mode: "face_up_always" },
+          stateCommitPolicy: { mode: "on_complete" },
+          interruptPolicy: { mode: "cancel" },
+          sequence: {
+            orderIndex: index,
+            batchSize: trickPlays.length,
+            waveIndex: 1,
+            staggerMs: 0
+          },
+          concurrency: {
+            groupId: collectGroupId,
+            mode: "simultaneous",
+            maxParallel: trickPlays.length
+          },
+          events: { emit: ["on_start", "on_commit", "on_complete"], channel: "whist" },
+          metadata: {
+            phase: "trick_collect",
+            winnerSeatId: winnerPlay.seatId,
+            winnerPlayOrder: winnerPlay.playOrder
+          }
+        }, "whist:trick-collect");
+        const whistCollectTiming = resolveTransitionRuntimeTiming(whistCollectTransition, {
+          durationMs: trickAnimationProfile.collectMs,
+          easing: TRICK_COLLECT_EASING
+        });
+
+        collectTransitions.push(
+          transitionSpriteToAnchor(sprite, {
+            anchorX: winnerAnchor.x + spread,
+            anchorY: winnerAnchor.y - raise,
+            rotateDeg: 0,
+            scale: 1,
+            durationMs: whistCollectTiming.durationMs,
+            easing: whistCollectTiming.easing
+          })
+        );
+      });
+    }
+
+    if (collectTransitions.length > 0) {
+      await Promise.all(collectTransitions);
+    }
+
+    await waitForMs(trickAnimationProfile.cleanupMs);
+    if (!isRunCurrent()) {
+      return false;
+    }
+
+    currentCards = currentCards.filter((entry) => entry?.cardId !== cardId);
+    setTrickPhase(TRICK_PHASE_DEAL_IDLE);
+    await renderCards(currentCards);
+    setStatus(`Played: ${getCardPlayLabel(card)} (${source})`);
+    clearPlayIntentStatusMessageLater(900);
+    return true;
+  } catch (error) {
+    console.error("Trick play sequence failed:", error);
+    setTrickPhase(TRICK_PHASE_DEAL_IDLE);
+    return false;
+  } finally {
+    clearPendingTrickSweepContinueWait();
+    if (hiddenSourceCardElement instanceof HTMLElement) {
+      hiddenSourceCardElement.style.removeProperty("visibility");
+    }
+
+    clearTrickLayer();
+    if (!isRunCurrent()) {
+      setTrickPhase(TRICK_PHASE_DEAL_IDLE);
+    }
+  }
+}
+
+function getAutoSortedGroupOrder(cards) {
+  if (!Array.isArray(cards) || cards.length === 0) {
+    return [];
+  }
+
+  if (HAND_SORTING_API === null) {
+    return getGroupOrderFromCardSequence(cards);
+  }
+
+  try {
+    const sortedCards = HAND_SORTING_API.sortHandCards(cards, {
+      rankPolicy: getHandRankPolicy()
+    }).sortedCards;
+    const cardsForGroupOrder = Array.isArray(sortedCards) && sortedCards.length > 0
+      ? sortedCards
+      : cards;
+    return getGroupOrderFromCardSequence(cardsForGroupOrder);
+  } catch (_error) {
+    return getGroupOrderFromCardSequence(cards);
+  }
+}
+
+function maybeFreezeWhistSuitOrderOnFirstPlay() {
+  if (playMechanicMode !== "whist" || getEffectiveHandSortMode() !== "auto_ranked") {
+    return false;
+  }
+
+  const lockedGroupOrder = getAutoSortedGroupOrder(currentCards);
+  if (lockedGroupOrder.length === 0) {
+    return false;
+  }
+
+  manualSuitOrder = lockedGroupOrder;
+  applyHandSortPresetToLegacy("manual_suits_ranked");
+  return true;
+}
+
+function handleCardPlayIntent(cardId, payload = {}) {
+  if (isTapTapMode()) {
+    return handleTapTapPlayIntent(cardId, payload);
+  }
+
+  if (isTrickInteractionLocked() || getViewMode() !== "hand") {
+    return false;
+  }
+
+  const card = findCurrentCardById(cardId);
+  if (!card) {
+    return false;
+  }
+
+  const {
+    source = "short_click",
+    clickClientX = Number.NaN
+  } = payload ?? {};
+
+  maybeFreezeWhistSuitOrderOnFirstPlay();
+  lastPlayIntentCardId = cardId;
+  lastPlayIntentAtIso = new Date().toISOString();
+  setStatus(`Play intent: ${getCardPlayLabel(card)} (${source})`);
+  setTrickPhase(TRICK_PHASE_TRICK_LOCK);
+  void runTrickPlaySequence({
+    cardId,
+    clickClientX,
+    source
+  });
+  return true;
 }
 
 function normalizeDeckEntry(rawDeck) {
@@ -1390,6 +4127,103 @@ function getSelectedHandSortPreset() {
   return selected && isSupportedHandSortPreset(selected.value) ? selected.value : "auto_ranked";
 }
 
+function isSupportedTrickAnimationSpeedPreset(value) {
+  return value === "slow" || value === "medium" || value === "fast";
+}
+
+function isSupportedTrickBotAnimationMode(value) {
+  return value === "seat_launch" || value === "edge_fly";
+}
+
+function getStoredTrickAnimationSpeedPreset() {
+  const storedValue = getStoredString(TRICK_ANIMATION_SPEED_STORAGE_KEY);
+  return isSupportedTrickAnimationSpeedPreset(storedValue)
+    ? storedValue
+    : DEFAULT_TRICK_ANIMATION_SPEED_PRESET;
+}
+
+function getStoredTrickBotAnimationMode() {
+  const storedValue = getStoredString(TRICK_BOT_ANIMATION_MODE_STORAGE_KEY);
+  return isSupportedTrickBotAnimationMode(storedValue)
+    ? storedValue
+    : DEFAULT_TRICK_BOT_ANIMATION_MODE;
+}
+
+function setStoredTrickAnimationSpeedPreset(value) {
+  if (isSupportedTrickAnimationSpeedPreset(value)) {
+    setStoredStringOrClear(TRICK_ANIMATION_SPEED_STORAGE_KEY, value);
+    return;
+  }
+
+  setStoredStringOrClear(TRICK_ANIMATION_SPEED_STORAGE_KEY, DEFAULT_TRICK_ANIMATION_SPEED_PRESET);
+}
+
+function setStoredTrickBotAnimationMode(value) {
+  if (isSupportedTrickBotAnimationMode(value)) {
+    setStoredStringOrClear(TRICK_BOT_ANIMATION_MODE_STORAGE_KEY, value);
+    return;
+  }
+
+  setStoredStringOrClear(TRICK_BOT_ANIMATION_MODE_STORAGE_KEY, DEFAULT_TRICK_BOT_ANIMATION_MODE);
+}
+
+function setTrickAnimationSpeedPreset(nextPreset, persist = true) {
+  const resolvedPreset = isSupportedTrickAnimationSpeedPreset(nextPreset)
+    ? nextPreset
+    : DEFAULT_TRICK_ANIMATION_SPEED_PRESET;
+  trickAnimationSpeedPreset = resolvedPreset;
+
+  if (trickAnimationSpeedSelect) {
+    trickAnimationSpeedSelect.value = resolvedPreset;
+  }
+
+  if (persist) {
+    setStoredTrickAnimationSpeedPreset(resolvedPreset);
+  }
+}
+
+function setTrickBotAnimationMode(nextMode, persist = true) {
+  const resolvedMode = isSupportedTrickBotAnimationMode(nextMode)
+    ? nextMode
+    : DEFAULT_TRICK_BOT_ANIMATION_MODE;
+  trickBotAnimationMode = resolvedMode;
+
+  if (trickBotAnimationModeSelect) {
+    trickBotAnimationModeSelect.value = resolvedMode;
+  }
+
+  if (persist) {
+    setStoredTrickBotAnimationMode(resolvedMode);
+  }
+}
+
+function initializeTrickAnimationSpeedControl() {
+  setTrickAnimationSpeedPreset(getStoredTrickAnimationSpeedPreset(), false);
+  setTrickBotAnimationMode(getStoredTrickBotAnimationMode(), false);
+}
+
+function getTrickAnimationProfile() {
+  if (isTapTapMode()) {
+    const baseFastProfile =
+      TRICK_ANIMATION_SPEED_PRESETS.fast ??
+      TRICK_ANIMATION_SPEED_PRESETS[DEFAULT_TRICK_ANIMATION_SPEED_PRESET];
+    const durationMultiplier =
+      TAPTAP_ANIMATION_SPEED_DURATION_MULTIPLIERS[trickAnimationSpeedPreset] ?? 1;
+    return {
+      ...baseFastProfile,
+      humanFlightMs: Math.round(baseFastProfile.humanFlightMs * durationMultiplier),
+      botFlightMs: Math.round(baseFastProfile.botFlightMs * durationMultiplier),
+      botStaggerMs: Math.round(baseFastProfile.botStaggerMs * durationMultiplier),
+      highlightMs: Math.round(baseFastProfile.highlightMs * durationMultiplier),
+      collectMs: Math.round(baseFastProfile.collectMs * durationMultiplier),
+      cleanupMs: Math.round(baseFastProfile.cleanupMs * durationMultiplier)
+    };
+  }
+
+  return TRICK_ANIMATION_SPEED_PRESETS[trickAnimationSpeedPreset] ??
+    TRICK_ANIMATION_SPEED_PRESETS[DEFAULT_TRICK_ANIMATION_SPEED_PRESET];
+}
+
 function syncHandSortPresetControlsFromLegacy() {
   if (handSortPresetInputs.length === 0) {
     return;
@@ -1562,6 +4396,47 @@ function clearManualSuitOrder() {
   manualSuitOrder = null;
 }
 
+function getGroupOrderFromCardSequence(cards) {
+  if (!Array.isArray(cards) || cards.length === 0) {
+    return [];
+  }
+
+  const groupOrder = [];
+  const seenGroupKeys = new Set();
+
+  cards.forEach((card) => {
+    const groupKey = getCardGroupKey(card);
+    if (!isSupportedManualGroupKey(groupKey) || seenGroupKeys.has(groupKey)) {
+      return;
+    }
+
+    seenGroupKeys.add(groupKey);
+    groupOrder.push(groupKey);
+  });
+
+  return groupOrder;
+}
+
+function getNormalizedManualGroupOrder(groupOrder) {
+  if (!Array.isArray(groupOrder) || groupOrder.length === 0) {
+    return [];
+  }
+
+  const normalizedOrder = [];
+  const seenGroupKeys = new Set();
+
+  groupOrder.forEach((groupKey) => {
+    if (!isSupportedManualGroupKey(groupKey) || seenGroupKeys.has(groupKey)) {
+      return;
+    }
+
+    seenGroupKeys.add(groupKey);
+    normalizedOrder.push(groupKey);
+  });
+
+  return normalizedOrder;
+}
+
 function getCardGroupKey(card) {
   if (!card || typeof card !== "object") {
     return null;
@@ -1589,6 +4464,142 @@ function getCardElementGroupKey(cardElement) {
 
 function isSupportedManualGroupKey(groupKey) {
   return groupKey === JOKER_GROUP_KEY || isStandardSuit(groupKey);
+}
+
+function getSuitColorCategory(suit) {
+  if (suit === "hearts" || suit === "diamonds") {
+    return "red";
+  }
+
+  if (suit === "clubs" || suit === "spades") {
+    return "black";
+  }
+
+  return null;
+}
+
+function shouldShowWhistSameColorSuitGap(total, orderedCardElements) {
+  return playMechanicMode === "whist" &&
+    getEffectiveHandSortMode() !== "manual_free" &&
+    total > 1 &&
+    Array.isArray(orderedCardElements) &&
+    orderedCardElements.length === total;
+}
+
+function getWhistSameColorSuitGapBoundaries(total, orderedCardElements) {
+  if (!shouldShowWhistSameColorSuitGap(total, orderedCardElements)) {
+    return [];
+  }
+
+  const boundaries = [];
+  let previousGroupKey = null;
+
+  orderedCardElements.forEach((cardElement, index) => {
+    const groupKey = getCardElementGroupKey(cardElement);
+    if (groupKey === previousGroupKey) {
+      return;
+    }
+
+    if (isStandardSuit(previousGroupKey) && isStandardSuit(groupKey)) {
+      const previousColor = getSuitColorCategory(previousGroupKey);
+      const nextColor = getSuitColorCategory(groupKey);
+      if (previousColor !== null && previousColor === nextColor && index > 0) {
+        boundaries.push(index);
+      }
+    }
+
+    previousGroupKey = groupKey;
+  });
+
+  return boundaries;
+}
+
+function applySameColorSuitGapToLayoutState(layoutState, gapBoundaries) {
+  if (
+    !layoutState ||
+    !Array.isArray(layoutState.layouts) ||
+    layoutState.layouts.length <= 1 ||
+    !Array.isArray(gapBoundaries) ||
+    gapBoundaries.length === 0
+  ) {
+    return layoutState;
+  }
+
+  const normalizedBoundaries = [];
+  const seenBoundaries = new Set();
+  gapBoundaries.forEach((boundaryIndex) => {
+    if (!Number.isInteger(boundaryIndex) || boundaryIndex <= 0 || boundaryIndex >= layoutState.layouts.length) {
+      return;
+    }
+    if (seenBoundaries.has(boundaryIndex)) {
+      return;
+    }
+    seenBoundaries.add(boundaryIndex);
+    normalizedBoundaries.push(boundaryIndex);
+  });
+
+  if (normalizedBoundaries.length === 0) {
+    return layoutState;
+  }
+
+  normalizedBoundaries.sort((left, right) => left - right);
+
+  const firstAnchorX = layoutState.layouts[0]?.anchorX;
+  const lastAnchorX = layoutState.layouts[layoutState.layouts.length - 1]?.anchorX;
+  const direction = Number.isFinite(firstAnchorX) && Number.isFinite(lastAnchorX) && lastAnchorX < firstAnchorX
+    ? -1
+    : 1;
+  const gapStepX = (Number.isFinite(layoutState.visibleWidth) ? layoutState.visibleWidth : 0) * direction;
+  const cumulativeOffsets = new Array(layoutState.layouts.length).fill(0);
+  let boundaryCursor = 0;
+  let passedBoundaryCount = 0;
+
+  for (let index = 0; index < layoutState.layouts.length; index += 1) {
+    while (
+      boundaryCursor < normalizedBoundaries.length &&
+      normalizedBoundaries[boundaryCursor] <= index
+    ) {
+      passedBoundaryCount += 1;
+      boundaryCursor += 1;
+    }
+    cumulativeOffsets[index] = passedBoundaryCount * gapStepX;
+  }
+
+  layoutState.layouts = layoutState.layouts.map((layout, index) => {
+    const offsetX = cumulativeOffsets[index] ?? 0;
+    if (offsetX === 0) {
+      return layout;
+    }
+
+    return {
+      ...layout,
+      anchorX: layout.anchorX + offsetX,
+      contour: Array.isArray(layout.contour)
+        ? layout.contour.map((point) => ({ ...point, x: point.x + offsetX }))
+        : layout.contour
+    };
+  });
+
+  if (
+    Array.isArray(layoutState.curvePoints) &&
+    layoutState.curvePoints.length === layoutState.layouts.length
+  ) {
+    layoutState.curvePoints = layoutState.curvePoints.map((point, index) => {
+      const offsetX = cumulativeOffsets[index] ?? 0;
+      if (offsetX === 0) {
+        return point;
+      }
+
+      return {
+        ...point,
+        x: point.x + offsetX
+      };
+    });
+  }
+
+  layoutState.sameColorSuitGapBoundaries = normalizedBoundaries;
+  layoutState.sameColorSuitGapCount = normalizedBoundaries.length;
+  return layoutState;
 }
 
 function areGroupKeySetsEqual(leftKeys, rightKeys) {
@@ -1700,11 +4711,20 @@ function sortCardsByManualSuitsRanked(cards) {
   let effectiveGroupOrder = [...groupOrder];
 
   if (Array.isArray(manualSuitOrder) && manualSuitOrder.length > 0) {
-    const normalizedManualOrder = manualSuitOrder.filter((groupKey) => isSupportedManualGroupKey(groupKey));
-    if (areGroupKeySetsEqual(normalizedManualOrder, groupOrder)) {
-      effectiveGroupOrder = normalizedManualOrder;
-    } else {
+    const normalizedManualOrder = getNormalizedManualGroupOrder(manualSuitOrder);
+    if (normalizedManualOrder.length === 0) {
       clearManualSuitOrder();
+    } else {
+      const availableGroupKeys = new Set(groupOrder);
+      const manualPresentOrder = normalizedManualOrder.filter((groupKey) => availableGroupKeys.has(groupKey));
+
+      if (manualPresentOrder.length > 0) {
+        const manualPresentSet = new Set(manualPresentOrder);
+        const fallbackGroups = groupOrder.filter((groupKey) => !manualPresentSet.has(groupKey));
+        effectiveGroupOrder = [...manualPresentOrder, ...fallbackGroups];
+      } else {
+        clearManualSuitOrder();
+      }
     }
   }
 
@@ -1744,7 +4764,7 @@ function getCardsForView(cards, viewMode) {
 }
 
 function isCardDragEnabled() {
-  return getViewMode() === "hand";
+  return getViewMode() === "hand" && !isTrickInteractionLocked();
 }
 
 function isCardDragTrackedPointer(event) {
@@ -1772,7 +4792,7 @@ function isAnyDragActive() {
 }
 
 function isSuitDragEnabled() {
-  return getViewMode() === "hand" && isRankSortEnabled();
+  return getViewMode() === "hand" && isRankSortEnabled() && !isTrickInteractionLocked();
 }
 
 function resetCardDragState() {
@@ -2792,12 +5812,33 @@ function handleCardDragPointerEnd(event, { commit }) {
     return false;
   }
 
+  const isPendingShortClick = cardDragState !== null && cardDragState.active !== true;
+  const pendingCardId = cardDragState?.dragCardId ?? null;
+  const modifierActive = isHoverModifierActive(event);
+  const clickClientX = event.clientX;
+
   if (commit && commitCardDragOrder()) {
     renderCards(currentCards);
     return true;
   }
 
   resetCardDragState();
+
+  if (
+    commit &&
+    isPendingShortClick &&
+    !modifierActive &&
+    typeof pendingCardId === "string" &&
+    pendingCardId.length > 0
+  ) {
+    const playAccepted = handleCardPlayIntent(pendingCardId, {
+      source: "short_click",
+      clickClientX
+    });
+    if (playAccepted) {
+      return true;
+    }
+  }
 
   if (currentCards.length > 0 && getViewMode() === "hand") {
     refreshHandLayoutFromControls();
@@ -2808,20 +5849,7 @@ function handleCardDragPointerEnd(event, { commit }) {
 
 function getCurrentGroupOrderFromCards(cards) {
   const cardsInDealOrder = getCardsInDealOrder(cards);
-  const groupOrder = [];
-  const seenGroupKeys = new Set();
-
-  cardsInDealOrder.forEach((card) => {
-    const groupKey = getCardGroupKey(card);
-    if (!isSupportedManualGroupKey(groupKey) || seenGroupKeys.has(groupKey)) {
-      return;
-    }
-
-    seenGroupKeys.add(groupKey);
-    groupOrder.push(groupKey);
-  });
-
-  return groupOrder;
+  return getGroupOrderFromCardSequence(cardsInDealOrder);
 }
 
 function buildCardIdsByGroup(cardOrder, cardIdToGroupKey) {
@@ -3341,7 +6369,7 @@ function applyCardHandTransform(cardElement, baseTransform, baseZIndex) {
 }
 
 function applyCurrentHandHoverState() {
-  if (isAnyDragActive()) {
+  if (isAnyDragActive() || isTrickInteractionLocked()) {
     return;
   }
 
@@ -3384,7 +6412,7 @@ function clearHandHoverState() {
 }
 
 function setHandHoverFromCardElement(cardElement, modifierActive) {
-  if (isAnyDragActive()) {
+  if (isAnyDragActive() || isTrickInteractionLocked()) {
     clearHandHoverState();
     return;
   }
@@ -3412,12 +6440,17 @@ function setHandHoverFromCardElement(cardElement, modifierActive) {
 }
 
 function refreshHandHoverFromPointerEvent(event) {
+  if (isTrickInteractionLocked()) {
+    clearHandHoverState();
+    return;
+  }
+
   const cardElement = getHandCardElementFromTarget(event.target);
   setHandHoverFromCardElement(cardElement, isHoverModifierActive(event));
 }
 
 function refreshHandHoverFromKeyEvent(event) {
-  if (getViewMode() !== "hand") {
+  if (getViewMode() !== "hand" || isTrickInteractionLocked()) {
     clearHandHoverState();
     return;
   }
@@ -3702,6 +6735,8 @@ function handleDocumentEscapeForAdvancedControls(event) {
 function updateHandModeControls() {
   const viewMode = getViewMode();
   const isHandView = viewMode === "hand";
+  const isWhistMode = playMechanicMode === "whist";
+  const isTapTapActiveMode = playMechanicMode === "taptap";
   const handLayoutMode = getHandLayoutMode();
 
   syncAlphaSliderForMode();
@@ -3764,6 +6799,24 @@ function updateHandModeControls() {
   if (handRankPolicySelect) {
     handRankPolicySelect.disabled = !isHandView || HAND_SORTING_API === null || !isRankSortEnabled();
   }
+
+  if (trickAnimationSpeedSelect) {
+    trickAnimationSpeedSelect.disabled = !isHandView || (!isWhistMode && !isTapTapActiveMode);
+  }
+
+  if (trickBotAnimationModeSelect) {
+    trickBotAnimationModeSelect.disabled = !isHandView || !isWhistMode;
+  }
+
+  if (playMechanicModeSelect) {
+    playMechanicModeSelect.disabled = !isHandView;
+  }
+
+  if (tapTapTurnDirectionSelect) {
+    tapTapTurnDirectionSelect.disabled = !isHandView || !isTapTapActiveMode;
+  }
+
+  updateTapTapLogControls();
 
   if (handDepthShadowToggle) {
     handDepthShadowToggle.disabled = !isHandView;
@@ -4088,7 +7141,7 @@ function applyHandDirectionToCardLayouts(cardLayouts, handDirection) {
   }));
 }
 
-function getHandLayoutMetrics(total) {
+function getHandLayoutMetrics(total, orderedCardElements = null) {
   const firstCard = cardTable.querySelector(".card");
 
   if (!firstCard || total <= 0) {
@@ -4117,27 +7170,34 @@ function getHandLayoutMetrics(total) {
   const phiRad = degToRad(phiDeg);
   const stepCount = Math.max(0, total - 1);
   const centerIndex = (total - 1) / 2;
+  const effectiveOrderedCardElements = Array.isArray(orderedCardElements)
+    ? orderedCardElements
+    : Array.from(cardTable.querySelectorAll(".card"));
+  const sameColorSuitGapBoundaries = getWhistSameColorSuitGapBoundaries(
+    total,
+    effectiveOrderedCardElements
+  );
 
   const buildLayouts = (vf) => {
-    if (handLayoutMode === "demo") {
-      return buildDemoHandLayouts({
+    const layoutState = handLayoutMode === "demo"
+      ? buildDemoHandLayouts({
         total,
         cardWidth,
         cardHeight,
         visibilityFactor: vf,
         alphaDeg,
         demoOuterDropPct
+      })
+      : buildClassicHandLayouts({
+        total,
+        cardWidth,
+        cardHeight,
+        visibilityFactor: vf,
+        alphaRad,
+        phiRad
       });
-    }
 
-    return buildClassicHandLayouts({
-      total,
-      cardWidth,
-      cardHeight,
-      visibilityFactor: vf,
-      alphaRad,
-      phiRad
-    });
+    return applySameColorSuitGapToLayoutState(layoutState, sameColorSuitGapBoundaries);
   };
 
   let visibilityFactor = getVisibilityFactor();
@@ -4243,6 +7303,12 @@ function getHandLayoutMetrics(total) {
     maxOuterDropPx: layoutState.maxOuterDropPx ?? 0,
     gapAnglesDeg: layoutState.gapAnglesDeg ?? null,
     gapDropsPx: layoutState.gapDropsPx ?? null,
+    sameColorSuitGapBoundaries: Array.isArray(layoutState.sameColorSuitGapBoundaries)
+      ? [...layoutState.sameColorSuitGapBoundaries]
+      : [],
+    sameColorSuitGapCount: Number.isInteger(layoutState.sameColorSuitGapCount)
+      ? layoutState.sameColorSuitGapCount
+      : 0,
     cardLayouts: visualCardLayouts
   };
 }
@@ -4281,7 +7347,7 @@ function layoutHandCards(total) {
     return;
   }
 
-  const fullMetrics = getHandLayoutMetrics(total);
+  const fullMetrics = getHandLayoutMetrics(total, cardElements);
   if (!fullMetrics) {
     return;
   }
@@ -4569,6 +7635,23 @@ function getHandLayoutDiagnostics() {
     rankSortEnabled: isRankSortEnabled(),
     handSortModeEffective: getEffectiveHandSortMode(),
     handRankPolicy: getHandRankPolicy(),
+    playMechanicMode,
+    cardTransitionRenderMode,
+    tapTapTurnDirection,
+    trickPhase,
+    trickInteractionLocked: isTrickInteractionLocked(),
+    trickAnimationSpeedPreset,
+    trickBotAnimationMode,
+    tapTapStateActive,
+    tapTapTurnSeatId,
+    tapTapTurnHasDrawn,
+    tapTapDrawPileCount: tapTapDrawPile.length,
+    tapTapPlayedPileCount: tapTapPlayedPile.length,
+    dealRequestedCount,
+    playerCountForDeal,
+    activeBotSeatIds: getActiveBotSeatIds(playerCountForDeal),
+    lastPlayIntentCardId,
+    lastPlayIntentAtIso,
     cardSizePx: getCardSizePx(),
     visibilityFactor: getVisibilityFactor(),
     alphaDeg: getAlphaDeg(),
@@ -4590,6 +7673,8 @@ function getHandLayoutDiagnostics() {
           curveType: metrics.curveType,
           centerGapAngleDeg: metrics.centerGapAngleDeg,
           maxOuterDropPx: metrics.maxOuterDropPx,
+          sameColorSuitGapCount: metrics.sameColorSuitGapCount,
+          sameColorSuitGapBoundaries: metrics.sameColorSuitGapBoundaries,
           contentWidth: metrics.contentWidth,
           contentHeight: metrics.contentHeight
         }
@@ -4841,6 +7926,505 @@ function removeHandCurveOverlay() {
   }
 }
 
+function removeSeatMarkersOverlay() {
+  [cardTable, getTrickPlayfieldElement()].forEach((host) => {
+    if (!(host instanceof HTMLElement)) {
+      return;
+    }
+
+    const existingOverlay = host.querySelector(".seat-markers-overlay");
+    if (existingOverlay) {
+      existingOverlay.remove();
+    }
+  });
+}
+
+function updateSeatMarkersOverlay() {
+  removeSeatMarkersOverlay();
+
+  if (getViewMode() !== "hand" || (!tapTapStateActive && currentCards.length === 0)) {
+    return;
+  }
+
+  const botSeatIds = getActiveBotSeatIds(playerCountForDeal);
+  if (botSeatIds.length === 0) {
+    return;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "seat-markers-overlay";
+  overlay.setAttribute("aria-hidden", "true");
+
+  botSeatIds.forEach((seatId) => {
+    const seatVisual = BOT_SEAT_VISUALS[seatId];
+    const seatAnchor = getSeatAnchorById(seatId);
+    if (!seatVisual || !seatAnchor) {
+      return;
+    }
+
+    const marker = document.createElement("div");
+    marker.className = "seat-marker";
+    marker.dataset.seatId = seatId;
+    marker.style.left = `${seatAnchor.x}px`;
+    marker.style.top = `${seatAnchor.y}px`;
+    marker.style.setProperty("--seat-color", seatVisual.color);
+
+    const label = document.createElement("span");
+    label.className = "seat-marker__label";
+    label.textContent = seatVisual.label;
+    marker.appendChild(label);
+    overlay.appendChild(marker);
+  });
+
+  const playfieldElement = getTrickPlayfieldElement();
+  if (playfieldElement instanceof HTMLElement) {
+    playfieldElement.appendChild(overlay);
+  }
+}
+
+function removeTapTapCenterPiles() {
+  resetTapTapPileAnchors();
+  [cardTable, getTrickPlayfieldElement()].forEach((host) => {
+    if (!(host instanceof HTMLElement)) {
+      return;
+    }
+
+    const existingOverlay = host.querySelector(".taptap-center-piles");
+    if (existingOverlay) {
+      existingOverlay.remove();
+    }
+  });
+}
+
+function getTapTapStackVisualModel(cardCount) {
+  const safeCount = Number.isInteger(cardCount) && cardCount > 0 ? cardCount : 0;
+  if (safeCount === 0) {
+    return {
+      count: 0,
+      visibleLayers: 0,
+      spreadPx: 0,
+      layerStepPx: 0
+    };
+  }
+
+  const visibleLayers = Math.max(1, Math.min(8, Math.round(Math.log2(safeCount + 1) * 2)));
+  const spreadPx = Math.min(11, Math.max(1, Math.round(Math.log2(safeCount + 1) * 2.2)));
+  const layerStepPx = visibleLayers > 1 ? spreadPx / (visibleLayers - 1) : 0;
+
+  return {
+    count: safeCount,
+    visibleLayers,
+    spreadPx,
+    layerStepPx
+  };
+}
+
+async function createTapTapPileStackElement({ pileKind, cardCount, playedCards = [] }) {
+  const isDrawPile = pileKind === "draw";
+  const visualModel = getTapTapStackVisualModel(cardCount);
+  const playedCardsFromTop = Array.isArray(playedCards)
+    ? [...playedCards].reverse()
+    : [];
+  const playedFaceLayerCount = isDrawPile
+    ? 0
+    : Math.min(3, playedCardsFromTop.length, visualModel.visibleLayers);
+
+  const stackElement = document.createElement("div");
+  stackElement.className = `taptap-pile__stack taptap-pile__stack--${isDrawPile ? "draw" : "played"}`;
+  stackElement.style.setProperty("--stack-spread-px", `${visualModel.spreadPx.toFixed(2)}px`);
+
+  const cardsElement = document.createElement("div");
+  cardsElement.className = "taptap-pile__stack-cards";
+
+  if (visualModel.count === 0) {
+    cardsElement.classList.add("taptap-pile__stack-cards--empty");
+    const emptyCard = document.createElement("span");
+    emptyCard.className = "taptap-pile__stack-card taptap-pile__stack-card--empty";
+    cardsElement.appendChild(emptyCard);
+    stackElement.appendChild(cardsElement);
+    return stackElement;
+  }
+
+  for (let layerIndex = visualModel.visibleLayers - 1; layerIndex >= 0; layerIndex -= 1) {
+    const cardLayerElement = document.createElement("div");
+    const depthFromTop = layerIndex;
+    const offsetPx = (visualModel.layerStepPx * layerIndex).toFixed(2);
+    cardLayerElement.className = "taptap-pile__stack-card";
+    if (layerIndex === 0) {
+      cardLayerElement.classList.add("taptap-pile__stack-card--top");
+    }
+    cardLayerElement.style.transform = `translate(${offsetPx}px, ${offsetPx}px)`;
+    cardLayerElement.style.zIndex = `${visualModel.visibleLayers - layerIndex}`;
+
+    if (isDrawPile) {
+      cardLayerElement.classList.add("taptap-pile__stack-card--back");
+    } else {
+      const hasFaceLayer = depthFromTop < playedFaceLayerCount;
+      if (hasFaceLayer) {
+        const faceCard = playedCardsFromTop[depthFromTop];
+        if (faceCard) {
+          cardLayerElement.classList.add("taptap-pile__stack-card--played-face");
+          const faceCardElement = await createCardElement(faceCard, "image");
+          faceCardElement.classList.add("taptap-pile__stack-face-card");
+          faceCardElement.setAttribute("aria-hidden", "true");
+          cardLayerElement.appendChild(faceCardElement);
+        } else {
+          cardLayerElement.classList.add("taptap-pile__stack-card--played-under");
+        }
+      } else {
+        cardLayerElement.classList.add("taptap-pile__stack-card--played-under");
+      }
+    }
+
+    cardsElement.appendChild(cardLayerElement);
+  }
+
+  stackElement.appendChild(cardsElement);
+  return stackElement;
+}
+
+function createTapTapPileInfoElement({ title, count, hint }) {
+  const infoElement = document.createElement("div");
+  infoElement.className = "taptap-pile__info";
+
+  const titleElement = document.createElement("span");
+  titleElement.className = "taptap-pile__title";
+  titleElement.textContent = title;
+
+  const valueElement = document.createElement("span");
+  valueElement.className = "taptap-pile__value";
+  valueElement.textContent = `${count}`;
+
+  const hintElement = document.createElement("span");
+  hintElement.className = "taptap-pile__hint";
+  hintElement.textContent = hint;
+
+  infoElement.appendChild(titleElement);
+  infoElement.appendChild(valueElement);
+  infoElement.appendChild(hintElement);
+  return infoElement;
+}
+
+async function updateTapTapCenterPiles() {
+  const renderToken = tapTapCenterPilesRenderToken + 1;
+  tapTapCenterPilesRenderToken = renderToken;
+  removeTapTapCenterPiles();
+
+  if (!isTapTapMode() || !tapTapStateActive || getViewMode() !== "hand") {
+    return;
+  }
+
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    return;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "taptap-center-piles";
+
+  const drawPileButton = document.createElement("button");
+  drawPileButton.type = "button";
+  drawPileButton.className = "taptap-pile taptap-pile--draw";
+  const drawEnabled = tapTapTurnSeatId === "S" && !tapTapTurnHasDrawn && tapTapDrawPile.length > 0;
+  const drawPileCount = tapTapDrawPile.length;
+  const playedPileSnapshot = [...tapTapPlayedPile];
+  const playedPileCount = playedPileSnapshot.length;
+  drawPileButton.disabled = !drawEnabled;
+  drawPileButton.appendChild(await createTapTapPileStackElement({
+    pileKind: "draw",
+    cardCount: drawPileCount
+  }));
+  drawPileButton.appendChild(createTapTapPileInfoElement({
+    title: "Draw pile",
+    count: drawPileCount,
+    hint: drawEnabled ? "Tap to draw (optional)" : "Draw unavailable"
+  }));
+  drawPileButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    void handleTapTapHumanDrawIntent();
+  });
+
+  const playedTopCard = playedPileCount > 0
+    ? playedPileSnapshot[playedPileCount - 1]
+    : null;
+  const playedPileTopHint = playedTopCard ? getCardPlayLabel(playedTopCard) : "--";
+
+  const playedPile = document.createElement("div");
+  playedPile.className = "taptap-pile taptap-pile--played";
+  playedPile.appendChild(await createTapTapPileStackElement({
+    pileKind: "played",
+    cardCount: playedPileCount,
+    playedCards: playedPileSnapshot
+  }));
+  playedPile.appendChild(createTapTapPileInfoElement({
+    title: "Played pile",
+    count: playedPileCount,
+    hint: `Top: ${playedPileTopHint}`
+  }));
+
+  const meta = document.createElement("div");
+  meta.className = "taptap-center-piles__meta";
+  meta.textContent = `Turn: ${formatSeatTurnLabel(tapTapTurnSeatId)} · ${
+    tapTapTurnDirection === "clockwise" ? "clockwise" : "counter-clockwise"
+  }`;
+
+  if (renderToken !== tapTapCenterPilesRenderToken) {
+    return;
+  }
+
+  overlay.appendChild(drawPileButton);
+  overlay.appendChild(playedPile);
+  overlay.appendChild(meta);
+  playfieldElement.appendChild(overlay);
+  refreshTapTapPileAnchorsFromDom();
+}
+
+function clearTrickLayer() {
+  [cardTable, getTrickPlayfieldElement()].forEach((host) => {
+    if (!(host instanceof HTMLElement)) {
+      return;
+    }
+
+    const existingLayer = host.querySelector(".trick-layer");
+    if (existingLayer) {
+      existingLayer.remove();
+    }
+  });
+}
+
+function ensureTrickLayer() {
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    return null;
+  }
+
+  let layer = playfieldElement.querySelector(".trick-layer");
+  if (layer instanceof HTMLElement) {
+    return layer;
+  }
+
+  layer = document.createElement("div");
+  layer.className = "trick-layer";
+  layer.setAttribute("aria-hidden", "true");
+  playfieldElement.appendChild(layer);
+  return layer;
+}
+
+function setSpritePoseFromAnchor(sprite, anchorX, anchorY, rotateDeg = 0, scale = 1) {
+  const fallbackAnchor = getTapTapPlayfieldCenterAnchor();
+  const safeAnchorX = Number.isFinite(anchorX) ? anchorX : fallbackAnchor.x;
+  const safeAnchorY = Number.isFinite(anchorY) ? anchorY : fallbackAnchor.y;
+  const cardSize = getCurrentCardRenderSizePx();
+  const parsedWidth = Number.parseFloat(sprite.style.width);
+  const parsedHeight = Number.parseFloat(sprite.style.height);
+  const fallbackWidth = Number.isFinite(cardSize.width) && cardSize.width > 0 ? cardSize.width : 80;
+  const fallbackHeight = Number.isFinite(cardSize.height) && cardSize.height > 0 ? cardSize.height : 116;
+  const width = sprite.offsetWidth ||
+    (Number.isFinite(parsedWidth) && parsedWidth > 0 ? parsedWidth : fallbackWidth);
+  const height = sprite.offsetHeight ||
+    (Number.isFinite(parsedHeight) && parsedHeight > 0 ? parsedHeight : fallbackHeight);
+  sprite.style.left = `${safeAnchorX - (width / 2)}px`;
+  sprite.style.top = `${safeAnchorY - (height / 2)}px`;
+  sprite.style.transform = `rotate(${rotateDeg}deg) scale(${scale})`;
+}
+
+function transitionSpriteToAnchor(
+  sprite,
+  {
+    anchorX,
+    anchorY,
+    rotateDeg = 0,
+    scale = 1,
+    durationMs = 180,
+    easing = TRICK_FLIGHT_EASING,
+    delayMs = 0
+  }
+) {
+  return new Promise((resolve) => {
+    const startTransition = () => {
+      sprite.style.transition = `left ${durationMs}ms ${easing}, top ${durationMs}ms ${easing}, transform ${durationMs}ms ${easing}`;
+      window.requestAnimationFrame(() => {
+        setSpritePoseFromAnchor(sprite, anchorX, anchorY, rotateDeg, scale);
+      });
+      window.setTimeout(() => {
+        sprite.style.removeProperty("transition");
+        resolve();
+      }, durationMs + 60);
+    };
+
+    if (delayMs > 0) {
+      window.setTimeout(startTransition, delayMs);
+      return;
+    }
+
+    startTransition();
+  });
+}
+
+function getCardSelectorById(cardId) {
+  if (typeof cardId !== "string" || cardId.length === 0) {
+    return null;
+  }
+
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return `.card[data-card-id=\"${CSS.escape(cardId)}\"]`;
+  }
+
+  const escapedCardId = cardId.replace(/"/g, "\\\"");
+  return `.card[data-card-id=\"${escapedCardId}\"]`;
+}
+
+function createTrickSpriteFromHandCard(cardId) {
+  const selector = getCardSelectorById(cardId);
+  if (!selector) {
+    return null;
+  }
+
+  const sourceCardElement = cardTable.querySelector(selector);
+  if (!(sourceCardElement instanceof HTMLElement)) {
+    return null;
+  }
+
+  const playfieldElement = getTrickPlayfieldElement();
+  if (!(playfieldElement instanceof HTMLElement)) {
+    return null;
+  }
+
+  const playfieldRect = playfieldElement.getBoundingClientRect();
+  const sourceRect = sourceCardElement.getBoundingClientRect();
+  const sprite = sourceCardElement.cloneNode(true);
+  if (!(sprite instanceof HTMLElement)) {
+    return null;
+  }
+
+  const sourceCenterX = sourceRect.left + (sourceRect.width / 2);
+  const sourceCenterY = sourceRect.top + (sourceRect.height / 2);
+  const cardSize = getCurrentCardRenderSizePx();
+  const sourceBaseTiltDeg = Number.parseFloat(sourceCardElement.dataset.handThetaDeg ?? "");
+  const initialTiltDeg = Number.isFinite(sourceBaseTiltDeg) ? sourceBaseTiltDeg : 0;
+
+  sprite.classList.add("trick-card-sprite", "trick-card-sprite--human");
+  sprite.style.width = `${cardSize.width}px`;
+  sprite.style.height = `${cardSize.height}px`;
+  sprite.style.left = `${sourceCenterX - playfieldRect.left - (cardSize.width / 2)}px`;
+  sprite.style.top = `${sourceCenterY - playfieldRect.top - (cardSize.height / 2)}px`;
+  sprite.style.transformOrigin = "50% 50%";
+  sprite.style.transform = `rotate(${initialTiltDeg}deg)`;
+  sprite.style.pointerEvents = "none";
+  sourceCardElement.style.visibility = "hidden";
+  return {
+    sprite,
+    sourceCardElement
+  };
+}
+
+function drawBotTrickCard(seatId, playOrder) {
+  const runtimeCards = buildRuntimeDeckCards();
+  if (!Array.isArray(runtimeCards) || runtimeCards.length === 0) {
+    return null;
+  }
+
+  const randomIndex = Math.floor(Math.random() * runtimeCards.length);
+  const sourceCard = runtimeCards[randomIndex];
+  if (!sourceCard) {
+    return null;
+  }
+
+  return {
+    ...sourceCard,
+    cardId: `bot-${seatId}-${Date.now()}-${playOrder}-${Math.random().toString(16).slice(2, 8)}`,
+    dealIndex: playOrder
+  };
+}
+
+function getBotSeatBaseTiltDeg(seatId) {
+  if (seatId === "W") {
+    return -4;
+  }
+
+  if (seatId === "E") {
+    return 4;
+  }
+
+  return 0;
+}
+
+function getPlayTiltDegFromClick(cardElement, clickClientX) {
+  if (!(cardElement instanceof HTMLElement) || !Number.isFinite(clickClientX)) {
+    return 0;
+  }
+
+  const rect = cardElement.getBoundingClientRect();
+  if (!(rect.width > 0)) {
+    return 0;
+  }
+
+  const cardCenterX = rect.left + (rect.width / 2);
+  const offsetNorm = Math.max(-1, Math.min(1, (clickClientX - cardCenterX) / (rect.width / 2)));
+  const safeNorm = Math.abs(offsetNorm) < 0.12 ? 0 : offsetNorm;
+  const playTilt = safeNorm * 8;
+  return Math.max(-8, Math.min(8, playTilt));
+}
+
+function getNaturalizedTrickTableTiltDeg(baseTiltDeg, jitterRangeDeg = 0) {
+  const safeBaseTilt = Number.isFinite(baseTiltDeg) ? baseTiltDeg : 0;
+  const safeJitterRange = Number.isFinite(jitterRangeDeg) ? Math.max(0, jitterRangeDeg) : 0;
+  const randomJitter = ((Math.random() * 2) - 1) * safeJitterRange;
+  const naturalTilt = safeBaseTilt + randomJitter;
+  return Math.max(-12, Math.min(12, naturalTilt));
+}
+
+function getRankStrengthMapForCurrentPolicy() {
+  if (HAND_SORTING_API && typeof HAND_SORTING_API.getRankStrengthMap === "function") {
+    try {
+      return HAND_SORTING_API.getRankStrengthMap(getHandRankPolicy());
+    } catch (_error) {
+      // Ignore and fallback.
+    }
+  }
+
+  return getHandRankPolicy() === "low_high"
+    ? { "2": 0, "3": 1, "4": 2, "5": 3, "6": 4, "7": 5, "8": 6, "9": 7, "10": 8, J: 9, Q: 10, K: 11, A: 12 }
+    : { A: 0, K: 1, Q: 2, J: 3, "10": 4, "9": 5, "8": 6, "7": 7, "6": 8, "5": 9, "4": 10, "3": 11, "2": 12 };
+}
+
+function resolveTrickWinnerPlay(trickPlays) {
+  if (!Array.isArray(trickPlays) || trickPlays.length === 0) {
+    return null;
+  }
+
+  const jokerPlays = trickPlays.filter((play) => play.card?.rank === "JOKER");
+  if (jokerPlays.length > 0) {
+    return jokerPlays[jokerPlays.length - 1];
+  }
+
+  const leadSuit = trickPlays[0]?.card?.suit;
+  const suitedPlays = trickPlays.filter((play) => play.card?.suit === leadSuit);
+  if (suitedPlays.length === 0) {
+    return trickPlays[0];
+  }
+
+  const rankStrengthMap = getRankStrengthMapForCurrentPolicy();
+  let winner = suitedPlays[0];
+
+  for (let index = 1; index < suitedPlays.length; index += 1) {
+    const candidate = suitedPlays[index];
+    const winnerStrength = rankStrengthMap[winner.card?.rank];
+    const candidateStrength = rankStrengthMap[candidate.card?.rank];
+
+    if (!Number.isFinite(winnerStrength) || !Number.isFinite(candidateStrength)) {
+      continue;
+    }
+
+    if (candidateStrength < winnerStrength) {
+      winner = candidate;
+    }
+  }
+
+  return winner;
+}
+
 function getHandCurvePoints() {
   const metrics = getHandLayoutMetrics(currentCards.length);
 
@@ -4964,8 +8548,11 @@ function updateHandCurveOverlay() {
 }
 
 function updateDebugOverlays() {
+  updateSeatMarkersOverlay();
+  void updateTapTapCenterPiles();
   updateCardBoundsOverlay();
   updateHandCurveOverlay();
+  renderTrickDebugPanel();
   publishHandLayoutDiagnostics();
 }
 
@@ -5069,6 +8656,17 @@ function drawFromInput() {
   clearStatus();
   clearManualCardOrder();
   clearManualSuitOrder();
+  resetTrickDebugPlayedAnchors();
+  renderTrickDebugPanel();
+  resetTrickStateForDeal(count);
+  if (isTapTapMode()) {
+    initializeTapTapStateForDeal(count);
+    setStatus("TapTap: your turn. Draw is optional.");
+    return renderCards(currentCards, { fanAnimation: true });
+  }
+
+  clearTapTapState();
+  setTrickPhase(TRICK_PHASE_DEAL_IDLE);
   currentCards = drawCards(count);
   return renderCards(currentCards, { fanAnimation: true });
 }
@@ -5382,6 +8980,54 @@ if (fanAnimateToggle) {
   });
 }
 
+if (trickAnimationSpeedSelect) {
+  trickAnimationSpeedSelect.addEventListener("change", () => {
+    setTrickAnimationSpeedPreset(trickAnimationSpeedSelect.value);
+  });
+}
+
+if (trickBotAnimationModeSelect) {
+  trickBotAnimationModeSelect.addEventListener("change", () => {
+    setTrickBotAnimationMode(trickBotAnimationModeSelect.value);
+  });
+}
+
+if (playMechanicModeSelect) {
+  playMechanicModeSelect.addEventListener("change", () => {
+    setPlayMechanicMode(playMechanicModeSelect.value);
+    updateHandModeControls();
+    drawFromInput();
+  });
+}
+
+if (tapTapTurnDirectionSelect) {
+  tapTapTurnDirectionSelect.addEventListener("change", () => {
+    setTapTapTurnDirection(tapTapTurnDirectionSelect.value);
+    updateHandModeControls();
+
+    if (isTapTapMode() && tapTapStateActive) {
+      stopTapTapBotLoop();
+      syncTapTapTurnLock();
+      updateDebugOverlays();
+      if (tapTapTurnSeatId !== "S") {
+        void runTapTapBotTurns();
+      }
+    }
+  });
+}
+
+if (tapTapLogDownloadButton) {
+  tapTapLogDownloadButton.addEventListener("click", () => {
+    const downloadFn = window.__CTP_DOWNLOAD_TAPTAP_ACTION_LOG__;
+    if (typeof downloadFn !== "function" || !downloadFn()) {
+      setStatus("TapTap: no log available to download yet.");
+      return;
+    }
+
+    setStatus(`TapTap: downloaded ${TAPTAP_ACTION_LOG_FILENAME}.`);
+  });
+}
+
 if (advancedControlsToggleButton) {
   advancedControlsToggleButton.addEventListener("click", () => {
     toggleAdvancedControlsPanel();
@@ -5400,6 +9046,10 @@ document.addEventListener("keydown", handleDocumentEscapeForAdvancedControls);
 
 function handleHandWheelResize(event) {
   if (getViewMode() !== "hand" || currentCards.length === 0) {
+    return;
+  }
+
+  if (isTrickInteractionLocked()) {
     return;
   }
 
@@ -5423,6 +9073,19 @@ function handleHandWheelResize(event) {
   }
 
   applyCardHeightSetting(nextCardHeight);
+}
+
+const trickPlayfieldElementForDebug = getTrickPlayfieldElement();
+if (trickPlayfieldElementForDebug) {
+  trickPlayfieldElementForDebug.addEventListener("pointermove", (event) => {
+    setTrickDebugMouseFromEvent(event);
+    renderTrickDebugPanel();
+  });
+
+  trickPlayfieldElementForDebug.addEventListener("pointerleave", () => {
+    clearTrickDebugMousePosition();
+    renderTrickDebugPanel();
+  });
 }
 
 if (cardSizeSlider) {
@@ -5473,12 +9136,15 @@ window.addEventListener("resize", () => {
 
 async function initializeApp() {
   setAdvancedControlsPanelOpen(false);
+  initializeCardTransitionRenderMode();
   initializeViewMode();
   initializeHandLayoutMode();
   initializeCardSizeControl();
   initializeHandDirection();
   initializeHandSortingControls();
   initializeJokerSetupState();
+  initializePlayMechanicControls();
+  initializeTrickAnimationSpeedControl();
   initializeHandDepthShadowToggle();
   initializeHandDepthShadowStrengthSlider();
   initializeHandDepthShadowDirectionClock();

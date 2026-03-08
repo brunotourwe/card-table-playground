@@ -127,6 +127,19 @@
                 </div>
               </div>
 
+              <div class="box hand-layout-control">
+                <div class="box-title">Play mode</div>
+                <select id="play-mechanic-mode" aria-label="Play mechanic mode">
+                  <option value="whist" selected>Whist (tricks)</option>
+                  <option value="taptap">TapTap (turns)</option>
+                </select>
+                <div class="box-title">Turn direction</div>
+                <select id="taptap-turn-direction" aria-label="TapTap turn direction">
+                  <option value="clockwise" selected>Clockwise</option>
+                  <option value="counter_clockwise">Counter-clockwise</option>
+                </select>
+              </div>
+
               <div class="box col-span-2 debug-box">
                 <div class="box-title">Debug</div>
                 <div class="option-group">
@@ -246,6 +259,23 @@
                 <div id="fan-step-ms-value" class="slider-value">50</div>
               </div>
 
+              <div class="box hand-layout-control">
+                <div class="box-title">Trick animation</div>
+                <select id="trick-animation-speed" aria-label="Trick animation speed">
+                  <option value="slow">Slow</option>
+                  <option value="medium">Medium</option>
+                  <option value="fast" selected>Fast</option>
+                </select>
+                <div class="box-title">Bot play style</div>
+                <select id="trick-bot-animation-mode" aria-label="Bot trick animation mode">
+                  <option value="seat_launch" selected>From seat</option>
+                  <option value="edge_fly">Fly from edge</option>
+                </select>
+                <div class="box-title">TapTap log</div>
+                <button id="taptap-log-download" type="button">Download .txt log</button>
+                <div id="taptap-log-state" class="slider-value">TapTap mode only</div>
+              </div>
+
               <div class="box hand-layout-control shadow-control--hidden">
                 <div class="box-title">Depth</div>
                 <div class="option-group">
@@ -306,6 +336,10 @@
           </div>
         </div>
       </section>
+      <aside id="trick-debug-panel" class="trick-debug-panel" aria-live="polite">
+        <div class="trick-debug-panel__title">Trick debug</div>
+        <pre id="trick-debug-text" class="trick-debug-panel__text"></pre>
+      </aside>
     </div>
 
     <script src="assets/decks/decks.runtime.js"></script>

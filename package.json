@@ -2,6 +2,9 @@
   "name": "card-table-playground",
   "private": true,
   "type": "commonjs",
+  "dependencies": {
+    "@ctp/card-transition-contract": "file:packages/card-transition-contract"
+  },
   "scripts": {
     "decks:analyze": "node scripts/analyze-deck.js",
     "decks:validate": "node scripts/decks/validate.js",
@@ -9,6 +12,11 @@
     "decks:index": "node scripts/decks/index.js",
     "decks:split-sheet": "node scripts/decks/split-sheet.js",
     "hand:test": "node scripts/hand-visual-test.js",
-    "hand:sort:test": "node scripts/hand-sorting-test.js"
+    "hand:sort:test": "node scripts/hand-sorting-test.js",
+    "transition:feature:test": "node scripts/transition-feature-catalog-test.js",
+    "transition:profile:test": "node scripts/transition-profile-freeze-test.js",
+    "transition:conformance:test": "node scripts/transition-conformance-test.js",
+    "transition:integration:test": "node scripts/transition-render-mode-integration-test.js",
+    "transition:all:test": "npm run transition:feature:test && npm run transition:profile:test && npm run transition:conformance:test && npm run transition:integration:test"
   }
 }

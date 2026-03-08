@@ -1,0 +1,243 @@
+[
+  {
+    "schemaVersion": "ctp.card-transition.v1",
+    "transitionId": "draw-p1-0001",
+    "transactionId": "turn-12-draw-01",
+    "cardRef": {
+      "instanceId": "card-8h-77",
+      "deckId": "standard54-english"
+    },
+    "action": "draw",
+    "from": {
+      "zoneId": "deck.main",
+      "anchor": "top"
+    },
+    "to": {
+      "zoneId": "hand.p1",
+      "slotId": "auto"
+    },
+    "timing": {
+      "durationMs": 320,
+      "easing": "cubic-bezier(0.22, 0.8, 0.24, 1)",
+      "phases": [
+        {
+          "name": "lift",
+          "durationMs": 60
+        },
+        {
+          "name": "flight",
+          "durationMs": 200
+        },
+        {
+          "name": "settle",
+          "durationMs": 60
+        }
+      ]
+    },
+    "path": {
+      "type": "arc",
+      "arcHeightPx": 42
+    },
+    "orientation": {
+      "startTiltDeg": -2,
+      "endTiltDeg": 4,
+      "endRotateDeg": 3
+    },
+    "visibilityPolicy": {
+      "mode": "face_down_until_arrival",
+      "startFace": "face_down",
+      "endFace": "face_up"
+    },
+    "stateCommitPolicy": {
+      "mode": "on_complete"
+    },
+    "insertPolicy": {
+      "mode": "ghost_until_commit",
+      "containerZoneId": "hand.p1",
+      "indexStrategy": "renderer_decides"
+    },
+    "interruptPolicy": {
+      "mode": "complete_fast",
+      "completeFastDurationMs": 100
+    },
+    "accessibility": {
+      "respectReducedMotion": true,
+      "reducedMotionMode": "shorten",
+      "reducedDurationMs": 120,
+      "preserveAuthoritativeEvents": true
+    }
+  },
+  {
+    "schemaVersion": "ctp.card-transition.v1",
+    "transitionId": "whist-deal-wave1-seatN",
+    "transactionId": "deal-round-5-wave-1",
+    "cardRef": "card-qs-013",
+    "action": "deal",
+    "from": {
+      "zoneId": "deck.main"
+    },
+    "to": {
+      "zoneId": "hand.p2",
+      "seatId": "N"
+    },
+    "timing": {
+      "durationMs": 210,
+      "delayMs": 0,
+      "speedProfile": "fast"
+    },
+    "path": {
+      "type": "bezier",
+      "controlPoints": [
+        {
+          "x": -30,
+          "y": -10
+        },
+        {
+          "x": 12,
+          "y": -28
+        }
+      ]
+    },
+    "visibilityPolicy": {
+      "mode": "face_down_always"
+    },
+    "stateCommitPolicy": {
+      "mode": "on_start"
+    },
+    "sequence": {
+      "orderIndex": 1,
+      "batchSize": 4,
+      "staggerMs": 35,
+      "waveIndex": 1
+    },
+    "concurrency": {
+      "groupId": "deal-wave-1",
+      "mode": "simultaneous",
+      "maxParallel": 4
+    },
+    "interruptPolicy": {
+      "mode": "snap_to_end"
+    }
+  },
+  {
+    "schemaVersion": "ctp.card-transition.v1",
+    "transitionId": "bot-play-3",
+    "transactionId": "trick-9",
+    "seed": 90331,
+    "cardRef": "card-jd-041",
+    "action": "play",
+    "from": {
+      "zoneId": "hand.p3",
+      "seatId": "E"
+    },
+    "to": {
+      "zoneId": "table.trick.slot3",
+      "seatId": "E"
+    },
+    "timing": {
+      "durationMs": 180,
+      "delayMs": 120,
+      "speedProfile": "fast"
+    },
+    "path": {
+      "type": "linear",
+      "jitterPx": 2
+    },
+    "orientation": {
+      "startTiltDeg": 0,
+      "endTiltDeg": 5
+    },
+    "visibilityPolicy": {
+      "mode": "flip_at_progress",
+      "flipProgress": 0.85,
+      "startFace": "face_down",
+      "endFace": "face_up",
+      "flipAnimation": {
+        "durationMs": 320,
+        "easing": "ease-out",
+        "axis": "y",
+        "revealAtProgress": 0.55
+      },
+      "perAudience": [
+        {
+          "audienceId": "seat:E",
+          "face": "face_up"
+        }
+      ]
+    },
+    "audience": {
+      "visibility": "custom",
+      "includeIds": [
+        "seat:E",
+        "observer:table"
+      ]
+    },
+    "stateCommitPolicy": {
+      "mode": "on_progress",
+      "progress": 0.85,
+      "waitForAck": true
+    },
+    "events": {
+      "emit": [
+        "on_start",
+        "on_flip",
+        "on_commit",
+        "on_complete"
+      ],
+      "channel": "gameplay"
+    },
+    "interruptPolicy": {
+      "mode": "cancel"
+    }
+  },
+  {
+    "schemaVersion": "ctp.card-transition.v1",
+    "transitionId": "wiez-445-pass2-card3",
+    "transactionId": "deal-round-1-seatS-445",
+    "cardRef": "card-10c-088",
+    "action": "deal",
+    "from": {
+      "zoneId": "deck.main"
+    },
+    "to": {
+      "zoneId": "hand.p1",
+      "seatId": "S",
+      "offsetPx": {
+        "x": -18,
+        "y": -16
+      }
+    },
+    "timing": {
+      "durationMs": 340,
+      "easing": "cubic-bezier(0.22, 0.8, 0.24, 1)"
+    },
+    "path": {
+      "type": "arc",
+      "arcHeightPx": 66
+    },
+    "visibilityPolicy": {
+      "mode": "face_down_always"
+    },
+    "stateCommitPolicy": {
+      "mode": "on_start"
+    },
+    "sequence": {
+      "orderIndex": 6,
+      "batchSize": 4,
+      "waveIndex": 2,
+      "staggerMs": 420,
+      "packetId": "p2",
+      "packetSlotIndex": 2,
+      "holdFormationUntilProgress": 0.72,
+      "formationCompactness": 0.04
+    },
+    "concurrency": {
+      "groupId": "deal-round-1-seatS-445",
+      "mode": "wave",
+      "maxParallel": 5
+    },
+    "interruptPolicy": {
+      "mode": "snap_to_end"
+    }
+  }
+]

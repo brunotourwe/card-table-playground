@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CardTransition Lab</title>
+    <link rel="stylesheet" href="transition-lab.css" />
+  </head>
+  <body>
+    <main class="lab-page">
+      <aside class="lab-panel">
+        <h1>CardTransition Lab</h1>
+        <p class="lab-muted">
+          Isolated sandbox for validating CardTransition behavior before integration in <code>app.js</code>.
+        </p>
+
+        <div class="lab-controls">
+          <label>
+            Scenario
+            <select id="scenario-select">
+              <option value="draw">Draw</option>
+              <option value="deal1">Deal 1</option>
+              <option value="deal4">Deal 4 (wave)</option>
+              <option value="deal4OnePlayer">Deal 4 -> one player</option>
+              <option value="deal4AsOneBlock">Deal 4 as one block</option>
+              <option value="deal445Blocks">Deal 4-4-5 blocks</option>
+              <option value="hiddenReveal">Hidden reveal</option>
+              <option value="flipOnStart">Flip on start</option>
+              <option value="interruptReconnect">Interrupt + reconnect</option>
+            </select>
+          </label>
+          <label class="toggle">
+            <input id="reduced-motion-toggle" type="checkbox" />
+            Reduced motion
+          </label>
+          <div class="lab-actions">
+            <button id="run-scenario-btn" type="button">Run scenario</button>
+            <button id="reset-lab-btn" type="button">Reset</button>
+          </div>
+        </div>
+
+        <section class="lab-json-section">
+          <h2>Custom Transition (JSON)</h2>
+          <textarea id="custom-transition-input" spellcheck="false"></textarea>
+          <div class="lab-actions">
+            <button id="run-custom-btn" type="button">Run custom transition</button>
+          </div>
+        </section>
+
+        <section class="lab-log-section">
+          <h2>Event log</h2>
+          <pre id="event-log" aria-live="polite"></pre>
+        </section>
+
+        <section class="lab-feature-section">
+          <h2>Feature Catalog (A.n)</h2>
+          <p id="feature-coverage-summary" class="lab-muted"></p>
+          <div id="feature-list" class="feature-list"></div>
+        </section>
+      </aside>
+
+      <div
+        id="lab-splitter"
+        class="lab-splitter"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+      ></div>
+
+      <section class="lab-stage-wrap">
+        <div id="lab-stage" class="lab-stage" aria-label="Transition playfield"></div>
+      </section>
+    </main>
+
+    <script src="packages/card-transition-contract/browser/transition-feature-catalog.global.js"></script>
+    <script src="transition-lab-feature-coverage.js"></script>
+    <script src="transition-lab.js"></script>
+  </body>
+</html>
