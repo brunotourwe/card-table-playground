@@ -1,5 +1,9 @@
 # Card Table Playground
 
+> Legacy mirror notice (2026-03-09): this standalone repository is now maintained as a mirror/deprecated copy.
+> Active development moved to `card-games-hub` monorepo at `apps/card-table-playground`.
+> See `LEGACY_NOTICE.md` for migration context.
+
 A local, single-page visual playground for experimenting with playing card rendering and hand/table layout ideas.
 
 ## Lifecycle Mode
